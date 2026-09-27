@@ -1,5 +1,7 @@
 import { chromium } from 'playwright';
 
+process.env.PLAYWRIGHT_BROWSERS_PATH = process.env.PLAYWRIGHT_BROWSERS_PATH || '0';
+
 // In-memory cache for catalog search items to provide instant UI responsiveness
 let cachedCatalog = null;
 let lastCatalogFetch = 0;

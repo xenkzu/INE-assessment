@@ -7,7 +7,7 @@
   "scripts": {
     "start": "node src/server.js",
     "dev": "node --watch src/server.js",
-    "postinstall": "playwright install chromium",
+    "postinstall": "npx cross-env PLAYWRIGHT_BROWSERS_PATH=0 playwright install chromium || PLAYWRIGHT_BROWSERS_PATH=0 playwright install chromium",
     "scrape:headed": "node src/scripts/scrapeHeaded.js",
     "test": "node --test test/*.test.js"
   },

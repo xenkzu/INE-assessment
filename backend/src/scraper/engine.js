@@ -2,6 +2,7 @@ import { chromium } from 'playwright';
 import dotenv from 'dotenv';
 
 dotenv.config();
+process.env.PLAYWRIGHT_BROWSERS_PATH = process.env.PLAYWRIGHT_BROWSERS_PATH || '0';
 
 /**
  * Normalizes and extracts numeric price from text (handles currency symbols, commas, decimals).
