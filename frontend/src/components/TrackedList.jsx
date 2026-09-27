@@ -168,23 +168,23 @@ export default function TrackedList({ trackedProducts, onRefresh, onViewHistory 
           </p>
         </div>
 
-        {/* Metric Badges Group */}
+        {/* Metric Badges Group with Smooth Cascading Stagger */}
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '14px', paddingTop: '6px' }}>
-          <div className="card-rounded" style={{ padding: '10px 18px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <div className="card-rounded animate-fade-in-scale" style={{ padding: '10px 18px', display: 'flex', alignItems: 'center', gap: '10px', animationDelay: '120ms' }}>
             <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#27272A' }}></span>
             <span style={{ fontSize: '12px', color: '#52525B' }}>
               Active Tracked Count: <strong style={{ color: '#27272A', fontSize: '12px' }}>{trackedProducts.length} Items</strong>
             </span>
           </div>
 
-          <div className="card-rounded" style={{ padding: '10px 18px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <div className="card-rounded animate-fade-in-scale" style={{ padding: '10px 18px', display: 'flex', alignItems: 'center', gap: '10px', animationDelay: '260ms' }}>
             <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: 'var(--color-emerald)' }}></span>
             <span style={{ fontSize: '12px', color: '#52525B' }}>
               Auto-Scrape Frequency: <strong style={{ color: '#27272A', fontSize: '12px' }}>Every 2h</strong>
             </span>
           </div>
 
-          <div className="card-rounded" style={{ padding: '10px 18px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <div className="card-rounded animate-fade-in-scale" style={{ padding: '10px 18px', display: 'flex', alignItems: 'center', gap: '10px', animationDelay: '400ms' }}>
             <span style={{ color: 'var(--color-emerald-text)', fontWeight: 600, fontSize: '12px' }}>99.4%</span>
             <span style={{ fontSize: '12px', color: '#52525B' }}>Scraper Health</span>
           </div>
@@ -222,10 +222,18 @@ export default function TrackedList({ trackedProducts, onRefresh, onViewHistory 
             const stock = p.latestStock ?? p.last_stock_status;
             const scrapedAt = p.lastScrapedAt ?? p.last_scraped_at;
             const status = p.lastOutcome ?? p.last_scrape_status ?? 'pending';
-            const delayClass = `delay-${Math.min(8, (idx % 8) + 1)}`;
 
             return (
-              <div key={p.id} className={`card-rounded animate-fade-in-scale ${delayClass}`} style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+              <div
+                key={p.id}
+                className="card-rounded animate-fade-in-scale"
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  justifyContent: 'space-between',
+                  animationDelay: `${idx * 140}ms`
+                }}
+              >
                 <div>
                   {/* Card Header Pills */}
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', marginBottom: '18px' }}>

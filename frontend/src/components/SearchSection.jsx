@@ -183,6 +183,22 @@ export default function SearchSection({ onProductTracked, trackedProducts }) {
     { id: 'office', label: 'Office' }
   ];
 
+  // ⌘K / Ctrl+K keyboard shortcut focus
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        const searchInput = document.getElementById('catalog-search');
+        if (searchInput) {
+          searchInput.focus();
+          searchInput.select();
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
   return (
     <section className="section-container animate-fade-in-up delay-2">
       {/* Section Topic */}
@@ -196,17 +212,16 @@ export default function SearchSection({ onProductTracked, trackedProducts }) {
       {/* Search Bar & Category Filter Chips */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', marginBottom: '36px' }}>
         <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '20px' }}>
-          {/* Search Input */}
-          <div style={{ position: 'relative', width: '100%', maxWidth: '440px' }}>
+          {/* Sleek Search Input */}
+          <div style={{ position: 'relative', width: '100%', maxWidth: '440px', height: '42px', display: 'flex', alignItems: 'center' }}>
             <Search
               size={16}
               style={{
                 position: 'absolute',
                 left: '18px',
-                top: '50%',
-                transform: 'translateY(-50%)',
                 color: 'var(--color-text-subtle)',
-                pointerEvents: 'none'
+                pointerEvents: 'none',
+                zIndex: 2
               }}
             />
             <input
@@ -217,40 +232,51 @@ export default function SearchSection({ onProductTracked, trackedProducts }) {
               onChange={(e) => setQuery(e.target.value)}
               style={{
                 width: '100%',
+                height: '42px',
+                boxSizing: 'border-box',
                 backgroundColor: '#FFFFFF',
                 border: '1px solid var(--color-border)',
-                fontSize: '16px',
+                fontSize: '14px',
                 borderRadius: 'var(--radius-pill)',
-                padding: '12px 52px 12px 48px',
+                padding: '0 52px 0 46px',
                 color: 'var(--color-text)',
                 outline: 'none',
                 fontFamily: 'var(--font-family)',
-                transition: 'all 0.25s cubic-bezier(0.16, 1, 0.3, 1)'
+                transition: 'border-color 0.3s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.3s cubic-bezier(0.16, 1, 0.3, 1)'
+              }}
+              onFocus={(e) => {
+                e.currentTarget.style.borderColor = '#27272A';
+                e.currentTarget.style.boxShadow = '0 0 0 3px rgba(39, 39, 42, 0.08)';
+              }}
+              onBlur={(e) => {
+                e.currentTarget.style.borderColor = 'var(--color-border)';
+                e.currentTarget.style.boxShadow = 'none';
               }}
             />
             <span style={{
               position: 'absolute',
-              right: '16px',
-              top: '50%',
-              transform: 'translateY(-50%)',
+              right: '14px',
               fontSize: '12px',
               fontWeight: 600,
               color: 'var(--color-text-muted)',
               backgroundColor: '#F4F4F5',
               border: '1px solid var(--color-border)',
               padding: '2px 8px',
-              borderRadius: 'var(--radius-pill)'
+              borderRadius: 'var(--radius-pill)',
+              pointerEvents: 'none',
+              zIndex: 2
             }}>
               ⌘K
             </span>
           </div>
 
-          {/* Category Filter Chips */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', overflowX: 'auto', paddingBottom: '4px' }}>
-            {categories.map((cat) => (
+          {/* Category Filter Chips with Smooth Cascading Stagger */}
+          <div className="no-scrollbar" style={{ display: 'flex', alignItems: 'center', gap: '10px', overflowX: 'auto', paddingBottom: '4px' }}>
+            {categories.map((cat, idx) => (
               <button
                 key={cat.id}
-                className={`filter-chip ${categoryFilter === cat.id ? 'active' : ''}`}
+                className={`filter-chip animate-fade-in-scale ${categoryFilter === cat.id ? 'active' : ''}`}
+                style={{ animationDelay: `${idx * 110}ms` }}
                 onClick={() => setCategoryFilter(cat.id)}
               >
                 {cat.label}
@@ -296,10 +322,18 @@ export default function SearchSection({ onProductTracked, trackedProducts }) {
 
               const isTracked = isAlreadyTracked(product.id, currentOption);
               const isCurrentlyTracking = trackingKey === `${product.id}_${currentOption}`;
-              const delayClass = `delay-${Math.min(8, (idx % 8) + 1)}`;
 
               return (
-                <article key={product.id} className={`card-rounded animate-fade-in-scale ${delayClass}`} style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                <article
+                  key={product.id}
+                  className="card-rounded animate-fade-in-scale"
+                  style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    justifyContent: 'space-between',
+                    animationDelay: `${(idx % 12) * 120}ms`
+                  }}
+                >
                   <div>
                     {/* Top Badges */}
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '18px' }}>

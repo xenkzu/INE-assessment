@@ -127,14 +127,14 @@ body {
   border: 1px solid var(--color-border);
   background-color: var(--color-surface);
   padding: 30px 26px;
-  transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.35s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.25s ease;
+  transition: transform 0.55s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.55s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.35s ease;
   will-change: transform, box-shadow;
 }
 
 .card-rounded:hover {
   border-color: var(--color-border-hover);
   transform: translateY(-4px);
-  box-shadow: 0 16px 36px -10px rgba(0, 0, 0, 0.08), 0 4px 14px -2px rgba(0, 0, 0, 0.03);
+  box-shadow: 0 18px 40px -10px rgba(0, 0, 0, 0.08), 0 4px 16px -2px rgba(0, 0, 0, 0.03);
 }
 
 /* Dual Tone Date/Stat Badge (Exact 38px height matching action buttons) */
@@ -151,12 +151,13 @@ body {
   min-height: 38px;
   height: 38px;
   box-sizing: border-box;
-  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s ease;
+  transition: transform 0.45s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.45s ease;
+  will-change: transform;
 }
 
 .dual-badge:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(39, 39, 42, 0.1);
+  transform: translateY(-1.5px);
+  box-shadow: 0 6px 16px rgba(39, 39, 42, 0.12);
 }
 
 .dual-badge-left {
@@ -197,8 +198,9 @@ body {
   overflow: hidden;
   text-overflow: ellipsis;
   cursor: default;
-  transition: max-width 0.35s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s ease, background-color 0.2s ease, transform 0.2s ease;
+  transition: max-width 0.5s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.4s ease, background-color 0.3s ease, transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
   flex-shrink: 0;
+  will-change: max-width, transform;
 }
 
 .dark-pill:hover {
@@ -219,18 +221,25 @@ body {
   text-overflow: clip;
 }
 
-/* Filter Chip with Fluid Micro-Interactions */
+/* Filter Chip with Slower, Fluid Micro-Interactions */
 .filter-chip {
-  padding: 10px 20px;
+  min-height: 42px;
+  height: 42px;
+  box-sizing: border-box;
+  padding: 0 20px;
   border-radius: var(--radius-pill);
-  font-size: 16px;
-  font-weight: 400;
+  font-size: 14px;
+  font-weight: 500;
   background: #FFFFFF;
   border: 1px solid var(--color-border);
   color: #52525B;
   cursor: pointer;
-  transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease, box-shadow 0.22s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.35s ease, border-color 0.35s ease, color 0.35s ease, box-shadow 0.5s cubic-bezier(0.16, 1, 0.3, 1);
   white-space: nowrap;
+  user-select: none;
   will-change: transform;
 }
 
@@ -239,7 +248,7 @@ body {
   border-color: #27272A;
   color: #FFFFFF;
   transform: translateY(-2px);
-  box-shadow: 0 6px 16px rgba(39, 39, 42, 0.14);
+  box-shadow: 0 8px 22px rgba(39, 39, 42, 0.16);
 }
 
 .filter-chip:active {
@@ -250,7 +259,8 @@ body {
   background: #27272A;
   border-color: #27272A;
   color: #FFFFFF;
-  box-shadow: 0 4px 12px rgba(39, 39, 42, 0.12);
+  font-weight: 600;
+  box-shadow: 0 4px 14px rgba(39, 39, 42, 0.14);
 }
 
 /* Pulsing Green Live Indicator */
@@ -298,7 +308,7 @@ body {
   font-weight: 600;
   border: none;
   cursor: pointer;
-  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.2s ease, box-shadow 0.2s ease;
+  transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.3s ease, box-shadow 0.4s cubic-bezier(0.16, 1, 0.3, 1);
   text-decoration: none;
   will-change: transform;
 }
@@ -306,7 +316,7 @@ body {
 .btn-pill-primary:hover {
   background-color: #3F3F46;
   transform: translateY(-1.5px);
-  box-shadow: 0 6px 16px rgba(39, 39, 42, 0.18);
+  box-shadow: 0 6px 18px rgba(39, 39, 42, 0.18);
 }
 
 .btn-pill-primary:active {
@@ -329,7 +339,7 @@ body {
   font-weight: 500;
   border: 1px solid var(--color-border);
   cursor: pointer;
-  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+  transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.3s ease, border-color 0.3s ease, box-shadow 0.4s cubic-bezier(0.16, 1, 0.3, 1);
   text-decoration: none;
   will-change: transform;
 }
@@ -354,7 +364,7 @@ body {
   background: transparent;
   border: none;
   cursor: pointer;
-  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .btn-pill-danger:hover {
@@ -450,7 +460,7 @@ body {
 @keyframes modalPopIn {
   0% {
     opacity: 0;
-    transform: scale(0.93) translateY(20px);
+    transform: scale(0.92) translateY(24px);
   }
   100% {
     opacity: 1;
@@ -472,7 +482,7 @@ body {
   justify-content: center;
   z-index: 1000;
   padding: 32px;
-  animation: modalBackdropFade 0.26s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: modalBackdropFade 0.45s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 .modal-content {
@@ -487,7 +497,7 @@ body {
   padding: 40px 44px;
   position: relative;
   box-sizing: border-box;
-  animation: modalPopIn 0.34s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: modalPopIn 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
   will-change: transform, opacity;
 }
 
@@ -510,7 +520,7 @@ body {
   justify-content: center;
   color: var(--color-text);
   cursor: pointer;
-  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.18s ease, color 0.18s ease;
+  transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.25s ease, color 0.25s ease;
   flex-shrink: 0;
 }
 
@@ -540,7 +550,8 @@ body {
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s ease, border-color 0.2s ease;
+  transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.4s ease, border-color 0.3s ease;
+  will-change: transform;
 }
 
 .modal-stat-card:hover {
@@ -597,7 +608,7 @@ body {
 }
 
 .data-table tbody tr {
-  transition: background-color 0.18s ease;
+  transition: background-color 0.25s ease;
 }
 
 .data-table tbody tr:hover td {
@@ -613,7 +624,7 @@ body {
   font-weight: 500;
   padding: 4px 12px;
   border-radius: var(--radius-pill);
-  transition: transform 0.2s ease;
+  transition: transform 0.35s ease;
 }
 
 .badge-success {
@@ -628,42 +639,56 @@ body {
   border: 1px solid var(--color-rose-border);
 }
 
-/* Awwwards-Grade Staggered Entrance Animations */
-@keyframes fadeInUp {
-  from {
+/* Slower, Silky-Smooth Organic Staggered Entrance Animations */
+@keyframes fadeInUpSmooth {
+  0% {
     opacity: 0;
-    transform: translateY(20px);
+    transform: translateY(32px);
   }
-  to {
+  100% {
     opacity: 1;
     transform: translateY(0);
   }
 }
 
-@keyframes fadeInScale {
-  from {
+@keyframes fadeInScaleSmooth {
+  0% {
     opacity: 0;
-    transform: scale(0.96) translateY(12px);
+    transform: scale(0.93) translateY(22px);
   }
-  to {
+  100% {
     opacity: 1;
     transform: scale(1) translateY(0);
   }
 }
 
 .animate-fade-in-up {
-  animation: fadeInUp 0.55s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation: fadeInUpSmooth 1.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+  will-change: transform, opacity;
 }
 
 .animate-fade-in-scale {
-  animation: fadeInScale 0.48s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation: fadeInScaleSmooth 1.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+  will-change: transform, opacity;
 }
 
-.delay-1 { animation-delay: 0.04s; }
-.delay-2 { animation-delay: 0.08s; }
-.delay-3 { animation-delay: 0.12s; }
-.delay-4 { animation-delay: 0.16s; }
-.delay-5 { animation-delay: 0.20s; }
-.delay-6 { animation-delay: 0.24s; }
-.delay-7 { animation-delay: 0.28s; }
-.delay-8 { animation-delay: 0.32s; }
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.delay-1 { animation-delay: 0.12s; }
+.delay-2 { animation-delay: 0.24s; }
+.delay-3 { animation-delay: 0.36s; }
+.delay-4 { animation-delay: 0.48s; }
+.delay-5 { animation-delay: 0.60s; }
+.delay-6 { animation-delay: 0.72s; }
+.delay-7 { animation-delay: 0.84s; }
+.delay-8 { animation-delay: 0.96s; }
+.delay-9 { animation-delay: 1.08s; }
+.delay-10 { animation-delay: 1.20s; }
+.delay-11 { animation-delay: 1.32s; }
+.delay-12 { animation-delay: 1.44s; }

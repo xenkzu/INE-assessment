@@ -138,10 +138,10 @@ export default function HistoryModal({ product, onClose }) {
           </button>
         </div>
 
-        {/* 4 Summary Stat Cards */}
+        {/* 4 Summary Stat Cards with Smooth Cascading Stagger */}
         <div className="modal-stat-grid">
           {/* 1. Current Price */}
-          <div className="modal-stat-card">
+          <div className="modal-stat-card animate-fade-in-scale" style={{ animationDelay: '120ms' }}>
             <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
               Current Price
             </span>
@@ -155,7 +155,7 @@ export default function HistoryModal({ product, onClose }) {
           </div>
 
           {/* 2. Lowest Recorded */}
-          <div className="modal-stat-card">
+          <div className="modal-stat-card animate-fade-in-scale" style={{ animationDelay: '260ms' }}>
             <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
               Historical Lowest
             </span>
@@ -169,7 +169,7 @@ export default function HistoryModal({ product, onClose }) {
           </div>
 
           {/* 3. Highest Recorded */}
-          <div className="modal-stat-card">
+          <div className="modal-stat-card animate-fade-in-scale" style={{ animationDelay: '400ms' }}>
             <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
               Historical Highest
             </span>
@@ -183,7 +183,7 @@ export default function HistoryModal({ product, onClose }) {
           </div>
 
           {/* 4. Scraper Reliability */}
-          <div className="modal-stat-card">
+          <div className="modal-stat-card animate-fade-in-scale" style={{ animationDelay: '540ms' }}>
             <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
               Scrape Reliability
             </span>

@@ -63,7 +63,7 @@ export default function Header({ onRefresh, loading }) {
         {/* Global Status Badges & Action Buttons */}
         <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '14px', paddingTop: '6px' }}>
           {/* Dual Badge Next Run with Live 2h Countdown */}
-          <div className="dual-badge" title="Next scheduled batch scrape run">
+          <div className="dual-badge animate-fade-in-scale" style={{ animationDelay: '140ms' }} title="Next scheduled batch scrape run">
             <span className="dual-badge-left">NEXT RUN</span>
             <span className="dual-badge-right" style={{ fontVariantNumeric: 'tabular-nums', minWidth: '95px', textAlign: 'center' }}>
               {countdown || 'Calculating...'}
@@ -71,7 +71,8 @@ export default function Header({ onRefresh, loading }) {
           </div>
 
           <button
-            className="btn-pill-secondary"
+            className="btn-pill-secondary animate-fade-in-scale"
+            style={{ animationDelay: '280ms' }}
             onClick={onRefresh}
             disabled={loading}
             title="Refresh active tracker data"
@@ -81,7 +82,8 @@ export default function Header({ onRefresh, loading }) {
           </button>
 
           <button
-            className="btn-pill-secondary"
+            className="btn-pill-secondary animate-fade-in-scale"
+            style={{ animationDelay: '420ms' }}
             onClick={handleExportCSV}
             title="Download historical price audit records as CSV"
           >
