@@ -1,4 +1,5 @@
 import { chromium } from 'playwright';
+import { execSync } from 'child_process';
 import dotenv from 'dotenv';
 
 dotenv.config();
@@ -53,6 +54,29 @@ async function dismissConsentIfPresent(page) {
 }
 
 /**
+ * Launches Chromium with automatic self-healing fallback if binary is missing.
+ */
+export async function launchResilientBrowser(options = {}) {
+  try {
+    return await chromium.launch(options);
+  } catch (err) {
+    if (err.message.includes("doesn't exist") || err.message.includes("Executable") || err.message.includes("Please run")) {
+      console.warn('[Scraper Auto-Heal] Chromium missing at runtime. Installing Chromium now...');
+      try {
+        execSync('cross-env PLAYWRIGHT_BROWSERS_PATH=0 npx playwright install chromium || npx playwright install chromium', {
+          stdio: 'inherit',
+          env: { ...process.env, PLAYWRIGHT_BROWSERS_PATH: '0' }
+        });
+        return await chromium.launch(options);
+      } catch (installErr) {
+        console.error('[Scraper Auto-Heal] Failed to auto-install chromium:', installErr);
+      }
+    }
+    throw err;
+  }
+}
+
+/**
  * Resiliently scrapes price and stock for a given product and option.
  * 
  * @param {Object} params
@@ -77,7 +101,7 @@ export async function scrapeProductVariant({
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     let browser = null;
     try {
-      browser = await chromium.launch({
+      browser = await launchResilientBrowser({
         headless: isHeadless,
         args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
       });

@@ -7,13 +7,15 @@
   "scripts": {
     "start": "node src/server.js",
     "dev": "node --watch src/server.js",
-    "postinstall": "npx cross-env PLAYWRIGHT_BROWSERS_PATH=0 playwright install chromium || PLAYWRIGHT_BROWSERS_PATH=0 playwright install chromium",
+    "build": "cross-env PLAYWRIGHT_BROWSERS_PATH=0 npx playwright install chromium",
+    "postinstall": "cross-env PLAYWRIGHT_BROWSERS_PATH=0 npx playwright install chromium",
     "scrape:headed": "node src/scripts/scrapeHeaded.js",
     "test": "node --test test/*.test.js"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.49.1",
     "cors": "^2.8.5",
+    "cross-env": "^7.0.3",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
     "playwright": "^1.50.1"

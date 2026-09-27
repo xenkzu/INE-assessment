@@ -1,6 +1,4 @@
-import { chromium } from 'playwright';
-
-process.env.PLAYWRIGHT_BROWSERS_PATH = process.env.PLAYWRIGHT_BROWSERS_PATH || '0';
+import { launchResilientBrowser } from './engine.js';
 
 // In-memory cache for catalog search items to provide instant UI responsiveness
 let cachedCatalog = null;
@@ -16,9 +14,9 @@ export async function fetchFullCatalog() {
     return cachedCatalog;
   }
 
-  const browser = await chromium.launch({
+  const browser = await launchResilientBrowser({
     headless: true,
-    args: ['--no-sandbox', '--disable-setuid-sandbox']
+    args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
   });
 
   try {
@@ -30,20 +28,18 @@ export async function fetchFullCatalog() {
       const cards = Array.from(document.querySelectorAll('.card, article, [class*="card"]'));
       const items = [];
 
-      // If cards are found
       cards.forEach((card) => {
         const titleEl = card.querySelector('h2, h3, .card-title, strong');
         const deptEl = card.querySelector('.dept-label, .category, span');
         const makerEl = card.querySelector('.card-maker, .maker, p');
         const skuEl = card.querySelector('.card-sku, .sku');
-        const btnEl = card.querySelector('button.card-open, a');
 
         const title = titleEl ? titleEl.innerText.trim() : '';
         const dept = deptEl ? deptEl.innerText.trim() : '';
         const maker = makerEl ? makerEl.innerText.trim() : '';
         const sku = skuEl ? skuEl.innerText.trim() : '';
 
-        // Extract ID from SKU or button
+        // Extract ID from SKU
         const skuMatch = sku.match(/SK-(\d+)-/i);
         const storeProductId = skuMatch ? skuMatch[1] : (sku ? sku.replace(/[^0-9]/g, '') : '');
 
@@ -55,7 +51,7 @@ export async function fetchFullCatalog() {
             category: dept,
             brand: maker,
             sku,
-            options: ['Starter', 'Regular', 'Standard'], // Default options baseline
+            options: ['Starter', 'Regular', 'Standard'],
             imageUrl: null
           });
         }
@@ -70,7 +66,6 @@ export async function fetchFullCatalog() {
       return products;
     }
 
-    // Fallback: If cards had distinct selectors, extract directly from text/DOM
     return [];
 
   } catch (err) {
@@ -109,9 +104,9 @@ export async function searchCatalog(query) {
  * @param {string} productUrl 
  */
 export async function fetchProductDetails(productUrl) {
-  const browser = await chromium.launch({
+  const browser = await launchResilientBrowser({
     headless: true,
-    args: ['--no-sandbox', '--disable-setuid-sandbox']
+    args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
   });
 
   try {
