@@ -75,17 +75,10 @@ export default function HistoryModal({ product, onClose }) {
 
   const getLogStatusBadge = (status) => {
     const s = String(status || '').toLowerCase();
-    if (s === 'success') {
+    if (s === 'success' || s === 'retried') {
       return (
         <span className="badge badge-success">
           <CheckCircle2 size={14} /> Success
-        </span>
-      );
-    }
-    if (s === 'retried') {
-      return (
-        <span className="badge badge-retried">
-          <AlertTriangle size={14} /> Retried
         </span>
       );
     }

@@ -333,7 +333,7 @@ export async function scrapeProductVariant({
       await context.close();
 
       const durationMs = Date.now() - startTime;
-      const outcome = retryCount > 0 ? 'retried' : 'success';
+      const outcome = 'success';
 
       return {
         success: true,

@@ -71,7 +71,7 @@ export default function TrackedList({ trackedProducts, onRefresh, onViewHistory 
           <span>processing...</span>
         </span>
       );
-    } else if (s === 'success') {
+    } else if (s === 'success' || s === 'retried') {
       return (
         <span style={{
           display: 'inline-flex',
@@ -87,24 +87,6 @@ export default function TrackedList({ trackedProducts, onRefresh, onViewHistory 
         }}>
           <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: 'var(--color-emerald)' }}></span>
           <span>success · {timeAgo}</span>
-        </span>
-      );
-    } else if (s === 'retried') {
-      return (
-        <span style={{
-          display: 'inline-flex',
-          alignItems: 'center',
-          gap: '6px',
-          fontSize: '12px',
-          fontWeight: 500,
-          color: 'var(--color-amber-text)',
-          backgroundColor: 'var(--color-amber-bg)',
-          border: '1px solid var(--color-amber-border)',
-          padding: '4px 12px',
-          borderRadius: 'var(--radius-pill)'
-        }}>
-          <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: 'var(--color-amber)' }}></span>
-          <span>retried · {timeAgo}</span>
         </span>
       );
     } else {
