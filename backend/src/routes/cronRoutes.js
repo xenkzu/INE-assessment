@@ -8,12 +8,13 @@ export const cronRouter = express.Router();
 
 /**
  * Scheduled trigger endpoint invoked by cron-job.org every 2 hours.
- * Protected by CRON_SECRET authorization header.
+ * Accepts both GET and POST requests.
+ * Protected by CRON_SECRET authorization header or ?secret= query parameter.
  * 
  * Returns 200 OK immediately (<50ms) to satisfy cron-job timeout limits,
  * while executing Playwright scraping batch asynchronously in the background.
  */
-cronRouter.post('/scrape', (req, res) => {
+cronRouter.all('/scrape', (req, res) => {
   const authHeader = req.headers['authorization'];
   const expectedSecret = process.env.CRON_SECRET;
 
