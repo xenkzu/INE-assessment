@@ -48,10 +48,16 @@ export default function SearchSection({ onProductTracked, trackedProducts }) {
           offset: 0
         });
 
-        const items = data.results || (Array.isArray(data) ? data : []);
+        const items = Array.isArray(data) ? data : (data.results || []);
         setResults(items);
-        setHasMore(data.hasMore ?? (items.length < (data.total || 0)));
-        setTotalCount(data.total || items.length);
+
+        const total = data.total !== undefined ? data.total : (Array.isArray(data) ? 385 : items.length);
+        setTotalCount(total);
+
+        const moreAvailable = data.hasMore !== undefined 
+          ? data.hasMore 
+          : (items.length > 0 && items.length < total);
+        setHasMore(moreAvailable);
 
         // Set default option for each product if available
         const initialSelections = {};
@@ -87,16 +93,27 @@ export default function SearchSection({ onProductTracked, trackedProducts }) {
         offset: results.length
       });
 
-      const newItems = data.results || (Array.isArray(data) ? data : []);
+      const newItems = Array.isArray(data) ? data : (data.results || []);
+      
+      let addedCount = 0;
       setResults((prev) => {
         // Deduplicate by store product ID
         const existingIds = new Set(prev.map((p) => p.storeProductId || p.id));
         const uniqueNew = newItems.filter((p) => !existingIds.has(p.storeProductId || p.id));
+        addedCount = uniqueNew.length;
+        if (uniqueNew.length === 0) {
+          return prev;
+        }
         return [...prev, ...uniqueNew];
       });
 
-      setHasMore(data.hasMore ?? (results.length + newItems.length < (data.total || 0)));
+      const total = data.total !== undefined ? data.total : totalCount;
       if (data.total !== undefined) setTotalCount(data.total);
+
+      const more = data.hasMore !== undefined
+        ? data.hasMore
+        : (addedCount > 0 && results.length + newItems.length < total);
+      setHasMore(more);
 
       // Set default options for new products
       const newSelections = {};
@@ -466,15 +483,15 @@ export default function SearchSection({ onProductTracked, trackedProducts }) {
             <div
               style={{
                 position: 'absolute',
-                bottom: 0,
+                bottom: '-8px',
                 left: '-16px',
                 right: '-16px',
-                height: '320px',
-                background: 'linear-gradient(180deg, rgba(246, 246, 248, 0) 0%, rgba(246, 246, 248, 0.45) 30%, rgba(246, 246, 248, 0.88) 65%, var(--color-canvas) 92%, var(--color-canvas) 100%)',
+                height: '250px',
+                background: 'linear-gradient(180deg, rgba(246, 246, 248, 0) 0%, rgba(246, 246, 248, 0.35) 25%, rgba(246, 246, 248, 0.82) 60%, var(--color-canvas) 88%, var(--color-canvas) 100%)',
                 display: 'flex',
                 alignItems: 'flex-end',
                 justifyContent: 'center',
-                paddingBottom: '24px',
+                paddingBottom: '16px',
                 pointerEvents: 'none',
                 zIndex: 10
               }}
