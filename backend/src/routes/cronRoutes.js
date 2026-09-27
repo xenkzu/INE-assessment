@@ -25,9 +25,12 @@ cronRouter.post('/scrape', async (req, res) => {
   try {
     const result = await cronService.runScheduledScrapes();
     res.json({
-      success: true,
-      message: 'Scheduled scrape completed successfully.',
-      ...result
+      status: 'ok',
+      total: result.total,
+      successful: result.successful,
+      retried: result.retried,
+      failed: result.failed,
+      durationMs: result.durationMs
     });
   } catch (err) {
     console.error('[Cron Execution Error]:', err);

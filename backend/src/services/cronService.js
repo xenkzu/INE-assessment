@@ -89,8 +89,7 @@ export const cronService = {
       successful,
       retried,
       failed,
-      durationMs,
-      summaries
+      durationMs
     };
   }
 };
