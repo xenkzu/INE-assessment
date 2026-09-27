@@ -2,10 +2,30 @@ const BASE_URL = import.meta.env.VITE_API_BASE_URL || (import.meta.env.DEV ? 'ht
 
 export const api = {
   /**
-   * Search catalog products by title / brand / SKU
+   * Search catalog products by title / brand / SKU with pagination
    */
-  async searchProducts(query) {
-    const res = await fetch(`${BASE_URL}/api/products/search?q=${encodeURIComponent(query || '')}`);
+  async searchProducts(params = {}) {
+    let q = '';
+    let category = '';
+    let limit = 8;
+    let offset = null;
+
+    if (typeof params === 'string') {
+      q = params;
+    } else if (params && typeof params === 'object') {
+      q = params.query || params.q || '';
+      category = params.category || '';
+      limit = params.limit !== undefined ? params.limit : 8;
+      offset = params.offset !== undefined && params.offset !== null ? params.offset : null;
+    }
+
+    const queryParams = new URLSearchParams();
+    if (q) queryParams.set('q', q);
+    if (category && category !== 'all') queryParams.set('category', category);
+    if (limit) queryParams.set('limit', String(limit));
+    if (offset !== null) queryParams.set('offset', String(offset));
+
+    const res = await fetch(`${BASE_URL}/api/products/search?${queryParams.toString()}`);
     if (!res.ok) throw new Error('Failed to search catalog');
     return await res.json();
   },

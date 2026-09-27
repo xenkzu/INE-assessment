@@ -20,25 +20,28 @@ export async function fetchLiveListings() {
   }
 
   try {
-    // Store has 960 items across 16 pages (limit 60)
-    const pagesToFetch = Array.from({ length: 16 }, (_, i) => i + 1);
+    // Store has 960 items across 16 pages of limit 60
     const results = [];
-
-    await Promise.all(
-      pagesToFetch.map(async (page) => {
-        try {
-          const res = await fetch(`https://demo.inelabteamdev.com/api/v2/listings?page=${page}&limit=60`);
-          if (res.ok) {
-            const data = await res.json();
-            if (Array.isArray(data.results)) {
-              results.push(...data.results);
+    for (let i = 1; i <= 16; i += 4) {
+      const batch = [i, i + 1, i + 2, i + 3].filter((p) => p <= 16);
+      const batchResponses = await Promise.all(
+        batch.map(async (page) => {
+          try {
+            const res = await fetch(`https://demo.inelabteamdev.com/api/v2/listings?page=${page}&limit=60`);
+            if (res.ok) {
+              const data = await res.json();
+              return Array.isArray(data.results) ? data.results : [];
             }
+          } catch (e) {
+            return [];
           }
-        } catch (e) {
-          // ignore page fetch error
-        }
-      })
-    );
+          return [];
+        })
+      );
+      for (const list of batchResponses) {
+        if (list && list.length) results.push(...list);
+      }
+    }
 
     if (results.length > 0) {
       // Deduplicate by ID
@@ -80,7 +83,7 @@ export async function fetchLiveItemDetails(itemId, maxRetries = 3) {
       const res = await fetch(`https://demo.inelabteamdev.com/api/v2/items/${numericId}`);
       if (res.status === 503 || res.status === 429) {
         if (attempt < maxRetries) {
-          await new Promise((r) => setTimeout(r, 300 * attempt));
+          await new Promise((r) => setTimeout(r, 200 * attempt));
           continue;
         }
       }
@@ -107,7 +110,7 @@ export async function fetchLiveItemDetails(itemId, maxRetries = 3) {
         console.error(`[Catalog] Error fetching live details for item ${numericId}:`, err.message);
         return null;
       }
-      await new Promise((r) => setTimeout(r, 300 * attempt));
+      await new Promise((r) => setTimeout(r, 200 * attempt));
     }
   }
 
@@ -115,33 +118,56 @@ export async function fetchLiveItemDetails(itemId, maxRetries = 3) {
 }
 
 /**
- * Searches the store catalog by partial or full query against live store listings.
- * @param {string} query 
- * @returns {Promise<Array>}
+ * Searches the store catalog by partial or full query against live store listings with pagination support.
+ * @param {Object|string} params 
+ * @returns {Promise<{ results: Array, total: number, page: number, limit: number, totalPages: number, hasMore: boolean }>}
  */
-export async function searchCatalog(query) {
+export async function searchCatalog(params = {}) {
+  let query = '';
+  let category = '';
+  let page = 1;
+  let limit = 8;
+  let offset = null;
+
+  if (typeof params === 'string') {
+    query = params;
+  } else if (params && typeof params === 'object') {
+    query = params.query || params.q || '';
+    category = params.category || '';
+    page = params.page ? Number(params.page) : 1;
+    limit = params.limit ? Number(params.limit) : 8;
+    offset = params.offset !== undefined && params.offset !== null ? Number(params.offset) : null;
+  }
+
   const listings = await fetchLiveListings();
-  const q = (query || '').toLowerCase().trim();
+  const q = String(query || '').toLowerCase().trim();
+  const catFilter = String(category || '').toLowerCase().trim();
 
   let matches = listings;
+
+  if (catFilter && catFilter !== 'all') {
+    matches = matches.filter((item) => (item.category || '').toLowerCase().includes(catFilter));
+  }
+
   if (q) {
     const words = q.split(/\s+/).filter(Boolean);
-    matches = listings.filter((item) => {
+    matches = matches.filter((item) => {
       const targetStr = `${item.name || ''} ${item.brand || ''} ${item.category || ''} ${item.sku || ''} ${item.id || ''}`.toLowerCase();
       return words.every((w) => targetStr.includes(w));
     });
   }
 
-  // Fetch live options sequentially or in small paced batches of 3 to avoid 503 rate limits
-  const topMatches = matches.slice(0, 10);
-  const detailedResults = [];
+  const total = matches.length;
+  const start = offset !== null ? offset : (page - 1) * limit;
+  const end = start + limit;
+  const pageItems = matches.slice(start, end);
 
-  for (const item of topMatches) {
-    const details = await fetchLiveItemDetails(item.id);
-    if (details) {
-      detailedResults.push(details);
-    } else {
-      detailedResults.push({
+  // Fetch live options for pageItems
+  const detailedResults = await Promise.all(
+    pageItems.map(async (item) => {
+      const details = await fetchLiveItemDetails(item.id);
+      if (details) return details;
+      return {
         storeProductId: String(item.id),
         productUrl: `https://demo.inelabteamdev.com/item/${item.id}`,
         name: item.name,
@@ -151,22 +177,18 @@ export async function searchCatalog(query) {
         optionAxis: 'Option',
         options: [],
         imageUrl: null
-      });
-    }
-    // Polite 40ms pause between live requests
-    await new Promise((r) => setTimeout(r, 40));
-  }
+      };
+    })
+  );
 
-  // If query contains a 4-digit product ID (e.g. 2491), ensure it's in the results
-  const idMatch = q.match(/\b(2\d{3})\b/);
-  if (idMatch) {
-    const directItem = await fetchLiveItemDetails(idMatch[1]);
-    if (directItem && !detailedResults.some((r) => r.storeProductId === directItem.storeProductId)) {
-      detailedResults.unshift(directItem);
-    }
-  }
-
-  return detailedResults;
+  return {
+    results: detailedResults,
+    total,
+    page,
+    limit,
+    totalPages: Math.ceil(total / limit),
+    hasMore: end < total
+  };
 }
 
 /**

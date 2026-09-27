@@ -8,8 +8,14 @@ export const productRouter = express.Router();
  */
 productRouter.get('/search', async (req, res) => {
   try {
-    const { q } = req.query;
-    const results = await productService.search(q);
+    const { q, category, page, limit, offset } = req.query;
+    const results = await productService.search({
+      query: q,
+      category,
+      page: page ? parseInt(page) : 1,
+      limit: limit ? parseInt(limit) : 8,
+      offset: offset !== undefined && offset !== null ? parseInt(offset) : null
+    });
     res.json(results);
   } catch (err) {
     console.error('Error in /search:', err);

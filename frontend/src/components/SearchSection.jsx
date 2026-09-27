@@ -7,19 +7,12 @@ export default function SearchSection({ onProductTracked, trackedProducts }) {
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(false);
+  const [totalCount, setTotalCount] = useState(0);
   const [selectedOptions, setSelectedOptions] = useState({});
   const [trackingKey, setTrackingKey] = useState(null);
   const [error, setError] = useState(null);
-  const [visibleCount, setVisibleCount] = useState(8); // Initially 2 rows of 4 products
-
-  // Reset pagination when search query or category filter changes
-  useEffect(() => {
-    setVisibleCount(8);
-  }, [query, categoryFilter]);
-
-  const handleLoadMore = () => {
-    setVisibleCount((prev) => prev + 4); // Reveal 1 more row of 4 products
-  };
 
   // Helper to safely extract option string from string or object
   const getOptionLabel = (opt) => {
@@ -42,18 +35,27 @@ export default function SearchSection({ onProductTracked, trackedProducts }) {
     return { id, name, url, brand, category, optionAxis, options, image, specs };
   };
 
-  // Search catalog on query change (with debouncing)
+  // Search catalog on query/category change (fetches first 2 rows = 8 items)
   useEffect(() => {
     const fetchCatalog = async () => {
       setLoading(true);
       setError(null);
       try {
-        const data = await api.searchProducts(query);
-        setResults(data || []);
+        const data = await api.searchProducts({
+          query,
+          category: categoryFilter,
+          limit: 8,
+          offset: 0
+        });
+
+        const items = data.results || (Array.isArray(data) ? data : []);
+        setResults(items);
+        setHasMore(data.hasMore ?? (items.length < (data.total || 0)));
+        setTotalCount(data.total || items.length);
 
         // Set default option for each product if available
         const initialSelections = {};
-        (data || []).forEach((item) => {
+        items.forEach((item) => {
           const info = getProductInfo(item);
           if (info.options.length > 0) {
             const firstOpt = getOptionLabel(info.options[0]);
@@ -70,7 +72,48 @@ export default function SearchSection({ onProductTracked, trackedProducts }) {
 
     const debounceTimer = setTimeout(fetchCatalog, 300);
     return () => clearTimeout(debounceTimer);
-  }, [query]);
+  }, [query, categoryFilter]);
+
+  // Load 1 more row (4 products) on demand from the 48 pages of the store catalog
+  const handleLoadMore = async () => {
+    if (loadingMore || !hasMore) return;
+    setLoadingMore(true);
+    setError(null);
+    try {
+      const data = await api.searchProducts({
+        query,
+        category: categoryFilter,
+        limit: 4, // 1 row = 4 products
+        offset: results.length
+      });
+
+      const newItems = data.results || (Array.isArray(data) ? data : []);
+      setResults((prev) => {
+        // Deduplicate by store product ID
+        const existingIds = new Set(prev.map((p) => p.storeProductId || p.id));
+        const uniqueNew = newItems.filter((p) => !existingIds.has(p.storeProductId || p.id));
+        return [...prev, ...uniqueNew];
+      });
+
+      setHasMore(data.hasMore ?? (results.length + newItems.length < (data.total || 0)));
+      if (data.total !== undefined) setTotalCount(data.total);
+
+      // Set default options for new products
+      const newSelections = {};
+      newItems.forEach((item) => {
+        const info = getProductInfo(item);
+        if (info.options.length > 0) {
+          const firstOpt = getOptionLabel(info.options[0]);
+          newSelections[info.id] = firstOpt;
+        }
+      });
+      setSelectedOptions((prev) => ({ ...newSelections, ...prev }));
+    } catch (err) {
+      setError('Failed to load more products');
+    } finally {
+      setLoadingMore(false);
+    }
+  };
 
   const handleOptionChange = (productId, optionName) => {
     setSelectedOptions((prev) => ({
@@ -243,7 +286,7 @@ export default function SearchSection({ onProductTracked, trackedProducts }) {
       ) : (
         <div style={{ position: 'relative' }}>
           <div className="grid-responsive-4" id="catalog-grid">
-            {filteredResults.slice(0, visibleCount).map((rawProduct, idx) => {
+            {filteredResults.map((rawProduct, idx) => {
               const product = getProductInfo(rawProduct);
               const currentOption =
                 selectedOptions[product.id] ||
@@ -384,8 +427,8 @@ export default function SearchSection({ onProductTracked, trackedProducts }) {
             })}
           </div>
 
-          {/* Fade Gradient Overlay & Load More Row Button */}
-          {visibleCount < filteredResults.length && (
+          {/* Fade Gradient Overlay & Dynamic Load More Row Button */}
+          {hasMore && (
             <div
               style={{
                 position: 'absolute',
@@ -405,6 +448,7 @@ export default function SearchSection({ onProductTracked, trackedProducts }) {
               <div style={{ pointerEvents: 'auto', textAlign: 'center' }}>
                 <button
                   onClick={handleLoadMore}
+                  disabled={loadingMore}
                   className="btn-pill-primary"
                   style={{
                     padding: '0 28px',
@@ -413,12 +457,21 @@ export default function SearchSection({ onProductTracked, trackedProducts }) {
                     fontSize: '12px',
                     fontWeight: 600,
                     boxShadow: '0 12px 30px -4px rgba(39, 39, 42, 0.35), 0 4px 12px -2px rgba(39, 39, 42, 0.15)',
-                    cursor: 'pointer'
+                    cursor: loadingMore ? 'not-allowed' : 'pointer'
                   }}
                   title="Load one more row of products"
                 >
-                  <ChevronDown size={15} />
-                  <span>Load More Products ({filteredResults.length - visibleCount} remaining)</span>
+                  {loadingMore ? (
+                    <>
+                      <Loader2 size={15} className="spin-animation" />
+                      <span>Fetching Next Row...</span>
+                    </>
+                  ) : (
+                    <>
+                      <ChevronDown size={15} />
+                      <span>Load More Products ({totalCount > results.length ? `${totalCount - results.length} available` : 'Next row'})</span>
+                    </>
+                  )}
                 </button>
               </div>
             </div>
