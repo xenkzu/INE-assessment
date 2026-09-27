@@ -30,8 +30,8 @@ function PriceTooltip({ active, payload }) {
 export default function PriceChart({ history }) {
   // Filter out any invalid points and sort chronologically
   const validPoints = (history || [])
-    .filter((h) => h.price !== null && h.price !== undefined)
-    .sort((a, b) => new Date(a.recorded_at) - new Date(b.recorded_at));
+    .filter((h) => h.price !== null && h.price !== undefined && !isNaN(Number(h.price)))
+    .sort((a, b) => new Date(a.recorded_at || a.created_at || a.timestamp) - new Date(b.recorded_at || b.created_at || b.timestamp));
 
   if (validPoints.length === 0) {
     return (
@@ -43,6 +43,7 @@ export default function PriceChart({ history }) {
   }
 
   const formatDate = (isoString) => {
+    if (!isoString) return '';
     const date = new Date(isoString);
     return date.toLocaleDateString(undefined, {
       month: 'short',
@@ -52,19 +53,22 @@ export default function PriceChart({ history }) {
     });
   };
 
-  const chartData = validPoints.map((item) => ({
-    date: formatDate(item.recorded_at),
-    fullDate: new Date(item.recorded_at).toLocaleString(undefined, {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit'
-    }),
-    price: Number(item.price),
-    stock: item.stock_status || 'In Stock'
-  }));
+  const chartData = validPoints.map((item) => {
+    const timeStr = item.recorded_at || item.created_at || item.timestamp;
+    return {
+      date: formatDate(timeStr),
+      fullDate: timeStr ? new Date(timeStr).toLocaleString(undefined, {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit'
+      }) : '',
+      price: Number(item.price),
+      stock: item.stock || item.stock_status || 'In Stock'
+    };
+  });
 
   const prices = chartData.map((d) => d.price);
   const minPrice = Math.min(...prices);
@@ -93,7 +97,7 @@ export default function PriceChart({ history }) {
 
       <ChartContainer
         config={chartConfig}
-        className="h-64 w-full [&_.recharts-curve.recharts-tooltip-cursor]:stroke-initial"
+        className="h-64 w-full min-h-[260px] [&_.recharts-curve.recharts-tooltip-cursor]:stroke-initial"
       >
         <ComposedChart
           data={chartData}

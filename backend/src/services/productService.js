@@ -147,34 +147,90 @@ export const productService = {
    * Retrieves historical price data and all scrape logs for a product.
    */
   async getProductHistory(id) {
-    const { data: product, error: prodError } = await supabase
-      .from('tracked_products')
-      .select('*')
-      .eq('id', id)
-      .single();
+    if (!id) {
+      return { product: null, priceHistory: [], scrapeLogs: [] };
+    }
 
-    if (prodError) throw prodError;
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(id));
 
-    const { data: priceHistory, error: histError } = await supabase
-      .from('price_history')
-      .select('*')
-      .eq('product_id', id)
-      .order('recorded_at', { ascending: true });
+    let product = null;
 
-    if (histError) throw histError;
+    try {
+      if (isUuid) {
+        const { data, error } = await supabase
+          .from('tracked_products')
+          .select('*')
+          .eq('id', id)
+          .limit(1);
+        if (error) console.warn('[getProductHistory] Error searching by UUID:', error);
+        if (data && data.length > 0) {
+          product = data[0];
+        }
+      }
 
-    const { data: scrapeLogs, error: logError } = await supabase
-      .from('scrape_logs')
-      .select('*')
-      .eq('product_id', id)
-      .order('timestamp', { ascending: false });
+      if (!product) {
+        const { data, error } = await supabase
+          .from('tracked_products')
+          .select('*')
+          .eq('store_product_id', String(id))
+          .order('created_at', { ascending: false })
+          .limit(1);
+        if (error) console.warn('[getProductHistory] Error searching by store_product_id:', error);
+        if (data && data.length > 0) {
+          product = data[0];
+        }
+      }
 
-    if (logError) throw logError;
+      // If product found in tracked_products
+      if (product) {
+        const { data: priceHistory } = await supabase
+          .from('price_history')
+          .select('*')
+          .eq('product_id', product.id)
+          .order('recorded_at', { ascending: true });
 
-    return {
-      product,
-      priceHistory: priceHistory || [],
-      scrapeLogs: scrapeLogs || []
-    };
+        // Retrieve scrape logs matching product.id or store_product_id
+        const { data: logsByProdId } = await supabase
+          .from('scrape_logs')
+          .select('*')
+          .eq('product_id', product.id)
+          .order('timestamp', { ascending: false });
+
+        const { data: logsByStoreId } = await supabase
+          .from('scrape_logs')
+          .select('*')
+          .eq('store_product_id', product.store_product_id)
+          .order('timestamp', { ascending: false });
+
+        const allLogsMap = new Map();
+        (logsByProdId || []).forEach((l) => allLogsMap.set(l.id, l));
+        (logsByStoreId || []).forEach((l) => allLogsMap.set(l.id, l));
+        const scrapeLogs = Array.from(allLogsMap.values()).sort(
+          (a, b) => new Date(b.timestamp || b.created_at) - new Date(a.timestamp || a.created_at)
+        );
+
+        return {
+          product,
+          priceHistory: priceHistory || [],
+          scrapeLogs: scrapeLogs || []
+        };
+      }
+
+      // Fallback: If product is not in tracked_products, fetch scrape logs by store_product_id
+      const { data: fallbackLogs } = await supabase
+        .from('scrape_logs')
+        .select('*')
+        .eq('store_product_id', String(id))
+        .order('timestamp', { ascending: false });
+
+      return {
+        product: null,
+        priceHistory: [],
+        scrapeLogs: fallbackLogs || []
+      };
+    } catch (err) {
+      console.error('[getProductHistory] Unexpected error:', err);
+      return { product: null, priceHistory: [], scrapeLogs: [] };
+    }
   }
 };

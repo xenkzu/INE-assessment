@@ -16,10 +16,11 @@ export default function HistoryModal({ product, onClose }) {
       setLoading(true);
       setError(null);
       try {
-        const res = await api.getProductHistory(product.id);
+        const targetId = product.id || product.store_product_id || product.storeProductId;
+        const res = await api.getProductHistory(targetId);
         setData({
-          history: res.history || [],
-          logs: res.logs || []
+          history: res.priceHistory || res.history || [],
+          logs: res.scrapeLogs || res.logs || []
         });
       } catch (err) {
         setError(err.message || 'Failed to fetch product history');
@@ -38,15 +39,18 @@ export default function HistoryModal({ product, onClose }) {
     .map((h) => (h.price !== null && h.price !== undefined ? Number(h.price) : null))
     .filter((p) => p !== null);
 
-  const currentPrice = validPrices.length > 0 ? validPrices[validPrices.length - 1] : product.last_scraped_price;
+  const currentPrice = validPrices.length > 0
+    ? validPrices[validPrices.length - 1]
+    : (product.latestPrice ?? product.last_scraped_price);
+
   const lowestPrice = validPrices.length > 0 ? Math.min(...validPrices) : currentPrice;
   const highestPrice = validPrices.length > 0 ? Math.max(...validPrices) : currentPrice;
   
   const latestStock = data.history.length > 0
-    ? data.history[data.history.length - 1].stock_status
-    : product.last_stock_status || 'In Stock';
+    ? (data.history[data.history.length - 1].stock || data.history[data.history.length - 1].stock_status)
+    : (product.latestStock || product.last_stock_status || 'In Stock');
 
-  const successfulLogs = (data.logs || []).filter((l) => l.status === 'success' || l.status === 'retried').length;
+  const successfulLogs = (data.logs || []).filter((l) => (l.outcome || l.status) === 'success' || (l.outcome || l.status) === 'retried').length;
   const reliabilityScore = data.logs.length > 0 ? Math.round((successfulLogs / data.logs.length) * 100) : 100;
 
   const formatDate = (isoString) => {
@@ -259,31 +263,35 @@ export default function HistoryModal({ product, onClose }) {
                     </tr>
                   </thead>
                   <tbody>
-                    {data.history.map((record) => (
-                      <tr key={record.id}>
-                        <td style={{ fontSize: '12px', color: 'var(--color-text-muted)' }}>
-                          {formatDate(record.recorded_at)}
-                        </td>
-                        <td style={{ fontWeight: 600, fontSize: '12px', color: 'var(--color-text)' }}>
-                          {formatPrice(record.price)}
-                        </td>
-                        <td>
-                          <span style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '4px',
-                            fontSize: '12px',
-                            fontWeight: 500,
-                            color: record.stock_status === 'In Stock' ? 'var(--color-emerald-text)' : 'var(--color-rose-text)',
-                            backgroundColor: record.stock_status === 'In Stock' ? 'var(--color-emerald-bg)' : 'var(--color-rose-bg)',
-                            padding: '4px 10px',
-                            borderRadius: 'var(--radius-pill)'
-                          }}>
-                            ● {record.stock_status || 'In Stock'}
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
+                    {data.history.map((record) => {
+                      const stockVal = record.stock || record.stock_status || 'In Stock';
+                      const isOutOfStock = String(stockVal).toLowerCase().includes('out') || String(stockVal).toLowerCase().includes('sold');
+                      return (
+                        <tr key={record.id}>
+                          <td style={{ fontSize: '12px', color: 'var(--color-text-muted)' }}>
+                            {formatDate(record.recorded_at || record.created_at || record.timestamp)}
+                          </td>
+                          <td style={{ fontWeight: 600, fontSize: '12px', color: 'var(--color-text)' }}>
+                            {formatPrice(record.price)}
+                          </td>
+                          <td>
+                            <span style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '4px',
+                              fontSize: '12px',
+                              fontWeight: 500,
+                              color: !isOutOfStock ? 'var(--color-emerald-text)' : 'var(--color-rose-text)',
+                              backgroundColor: !isOutOfStock ? 'var(--color-emerald-bg)' : 'var(--color-rose-bg)',
+                              padding: '4px 10px',
+                              borderRadius: 'var(--radius-pill)'
+                            }}>
+                              ● {stockVal}
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
@@ -320,14 +328,14 @@ export default function HistoryModal({ product, onClose }) {
                     {data.logs.map((log) => (
                       <tr key={log.id}>
                         <td style={{ fontSize: '12px', color: 'var(--color-text-muted)' }}>
-                          {formatDate(log.scraped_at)}
+                          {formatDate(log.timestamp || log.scraped_at || log.created_at)}
                         </td>
-                        <td>{getLogStatusBadge(log.status)}</td>
+                        <td>{getLogStatusBadge(log.outcome || log.status)}</td>
                         <td style={{ fontSize: '12px', fontWeight: 600, color: 'var(--color-text)' }}>
                           {log.duration_ms ? `${Number(log.duration_ms).toLocaleString()} ms` : '—'}
                         </td>
                         <td style={{ fontSize: '12px', fontWeight: 600 }}>
-                          {log.attempts || 1}
+                          {log.retry_count !== undefined && log.retry_count !== null ? log.retry_count + 1 : (log.attempts || 1)}
                         </td>
                         <td style={{ fontSize: '12px', color: log.error_message ? 'var(--color-rose-text)' : 'var(--color-text-muted)', maxWidth: '280px', wordBreak: 'break-word' }}>
                           {log.error_message || 'Session completed successfully'}
