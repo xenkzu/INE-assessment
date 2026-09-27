@@ -3,14 +3,14 @@ import { launchResilientBrowser } from './engine.js';
 // In-memory cache for catalog search items to provide instant UI responsiveness
 let cachedCatalog = null;
 let lastCatalogFetch = 0;
-const CATALOG_CACHE_TTL = 1000 * 60 * 30; // 30 minutes
+const CATALOG_CACHE_TTL = 1000 * 60 * 60; // 1 hour
 
 /**
- * Scrapes catalog items from the mock store homepage / items.
+ * Scrapes catalog items from the mock store across multiple pages.
  * @returns {Promise<Array<{ storeProductId: string, productUrl: string, name: string, category: string, brand: string, sku: string, options: string[], imageUrl: string|null }>>}
  */
 export async function fetchFullCatalog() {
-  if (cachedCatalog && (Date.now() - lastCatalogFetch < CATALOG_CACHE_TTL)) {
+  if (cachedCatalog && cachedCatalog.length > 0 && (Date.now() - lastCatalogFetch < CATALOG_CACHE_TTL)) {
     return cachedCatalog;
   }
 
@@ -21,49 +21,68 @@ export async function fetchFullCatalog() {
 
   try {
     const page = await browser.newPage();
-    await page.goto('https://demo.inelabteamdev.com/', { waitUntil: 'networkidle', timeout: 30000 });
+    await page.goto('https://demo.inelabteamdev.com/', { waitUntil: 'domcontentloaded', timeout: 30000 });
+    await page.waitForSelector('article.card', { timeout: 15000 });
 
-    // Extract product cards from the current page
-    const products = await page.evaluate(() => {
-      const cards = Array.from(document.querySelectorAll('.card, article, [class*="card"]'));
-      const items = [];
+    const allProducts = [];
 
-      cards.forEach((card) => {
-        const titleEl = card.querySelector('h2, h3, .card-title, strong');
-        const deptEl = card.querySelector('.dept-label, .category, span');
-        const makerEl = card.querySelector('.card-maker, .maker, p');
-        const skuEl = card.querySelector('.card-sku, .sku');
+    // Scrape first 3 pages to cache ~60 diverse products
+    for (let pageNum = 1; pageNum <= 3; pageNum++) {
+      const pageProducts = await page.evaluate(() => {
+        const cards = Array.from(document.querySelectorAll('article.card'));
+        const items = [];
 
-        const title = titleEl ? titleEl.innerText.trim() : '';
-        const dept = deptEl ? deptEl.innerText.trim() : '';
-        const maker = makerEl ? makerEl.innerText.trim() : '';
-        const sku = skuEl ? skuEl.innerText.trim() : '';
+        cards.forEach((card) => {
+          const titleEl = card.querySelector('.card-title');
+          const deptEl = card.querySelector('.dept-label');
+          const makerEl = card.querySelector('.card-maker');
+          const codeEl = card.querySelector('.card-code');
 
-        // Extract ID from SKU
-        const skuMatch = sku.match(/SK-(\d+)-/i);
-        const storeProductId = skuMatch ? skuMatch[1] : (sku ? sku.replace(/[^0-9]/g, '') : '');
+          const title = titleEl ? titleEl.innerText.trim() : '';
+          const category = deptEl ? deptEl.innerText.trim() : '';
+          const brand = makerEl ? makerEl.innerText.trim() : '';
+          const sku = codeEl ? codeEl.innerText.trim() : '';
 
-        if (title && storeProductId) {
-          items.push({
-            storeProductId,
-            productUrl: `https://demo.inelabteamdev.com/item/${storeProductId}`,
-            name: title,
-            category: dept,
-            brand: maker,
-            sku,
-            options: ['Starter', 'Regular', 'Standard'],
-            imageUrl: null
-          });
+          const skuMatch = sku.match(/SK-(\d+)-/i);
+          const storeProductId = skuMatch ? skuMatch[1] : (sku ? sku.replace(/[^0-9]/g, '') : '');
+
+          if (title && storeProductId) {
+            items.push({
+              storeProductId,
+              productUrl: `https://demo.inelabteamdev.com/item/${storeProductId}`,
+              name: title,
+              category,
+              brand,
+              sku,
+              options: ['Standard', 'Starter', 'Regular', 'Deluxe'],
+              imageUrl: null
+            });
+          }
+        });
+
+        return items;
+      });
+
+      pageProducts.forEach(p => {
+        if (!allProducts.some(existing => existing.storeProductId === p.storeProductId)) {
+          allProducts.push(p);
         }
       });
 
-      return items;
-    });
+      // Navigate to next page if available
+      const nextBtn = page.locator('button.ctl:has-text("NEXT")');
+      if (await nextBtn.count() > 0 && !(await nextBtn.isDisabled())) {
+        await nextBtn.click();
+        await page.waitForTimeout(1000);
+      } else {
+        break;
+      }
+    }
 
-    if (products.length > 0) {
-      cachedCatalog = products;
+    if (allProducts.length > 0) {
+      cachedCatalog = allProducts;
       lastCatalogFetch = Date.now();
-      return products;
+      return allProducts;
     }
 
     return [];
@@ -77,14 +96,14 @@ export async function fetchFullCatalog() {
 }
 
 /**
- * Searches the mock store by partial or full title.
+ * Searches the mock store by partial or full title/brand/category.
  * @param {string} query 
  * @returns {Promise<Array>}
  */
 export async function searchCatalog(query) {
   const catalog = await fetchFullCatalog();
   if (!query || query.trim() === '') {
-    return catalog.slice(0, 20);
+    return catalog;
   }
 
   const q = query.toLowerCase().trim();
@@ -96,7 +115,7 @@ export async function searchCatalog(query) {
     item.storeProductId.includes(q)
   );
 
-  return filtered.slice(0, 30);
+  return filtered;
 }
 
 /**
