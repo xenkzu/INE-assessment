@@ -1,4 +1,4 @@
-const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://ine-assessment-de8i.onrender.com';
+const BASE_URL = import.meta.env.VITE_API_BASE_URL || (import.meta.env.DEV ? 'http://localhost:5000' : 'https://ine-assessment-de8i.onrender.com');
 
 export const api = {
   /**

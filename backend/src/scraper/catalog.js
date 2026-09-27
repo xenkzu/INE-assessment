@@ -64,9 +64,10 @@ export async function fetchLiveListings() {
 
 /**
  * Fetches authentic product details and exact variant options from the live store API.
+ * Includes retry loop with backoff to handle mock store 503/429 rate limit challenges.
  * @param {string|number} itemId - e.g. "2491" or 2491
  */
-export async function fetchLiveItemDetails(itemId) {
+export async function fetchLiveItemDetails(itemId, maxRetries = 3) {
   const numericId = String(itemId).replace(/\D/g, '');
   if (!numericId) return null;
 
@@ -74,30 +75,43 @@ export async function fetchLiveItemDetails(itemId) {
     return itemDetailsCache.get(numericId);
   }
 
-  try {
-    const res = await fetch(`https://demo.inelabteamdev.com/api/v2/items/${numericId}`);
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const data = await res.json();
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      const res = await fetch(`https://demo.inelabteamdev.com/api/v2/items/${numericId}`);
+      if (res.status === 503 || res.status === 429) {
+        if (attempt < maxRetries) {
+          await new Promise((r) => setTimeout(r, 300 * attempt));
+          continue;
+        }
+      }
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
 
-    const formatted = {
-      storeProductId: String(data.id),
-      productUrl: `https://demo.inelabteamdev.com/item/${data.id}`,
-      name: data.name,
-      category: data.category,
-      brand: data.brand,
-      sku: data.sku,
-      optionAxis: data.optionAxis || 'Option',
-      options: (data.options || []).map((o) => (typeof o === 'string' ? o : o.label || o.id)),
-      specs: data.specs || {},
-      imageUrl: null
-    };
+      const formatted = {
+        storeProductId: String(data.id),
+        productUrl: `https://demo.inelabteamdev.com/item/${data.id}`,
+        name: data.name,
+        category: data.category,
+        brand: data.brand,
+        sku: data.sku,
+        optionAxis: data.optionAxis || 'Option',
+        options: (data.options || []).map((o) => (typeof o === 'string' ? o : o.label || o.id)),
+        specs: data.specs || {},
+        imageUrl: null
+      };
 
-    itemDetailsCache.set(numericId, formatted);
-    return formatted;
-  } catch (err) {
-    console.error(`[Catalog] Error fetching live details for item ${numericId}:`, err.message);
-    return null;
+      itemDetailsCache.set(numericId, formatted);
+      return formatted;
+    } catch (err) {
+      if (attempt === maxRetries) {
+        console.error(`[Catalog] Error fetching live details for item ${numericId}:`, err.message);
+        return null;
+      }
+      await new Promise((r) => setTimeout(r, 300 * attempt));
+    }
   }
+
+  return null;
 }
 
 /**
@@ -118,12 +132,16 @@ export async function searchCatalog(query) {
     });
   }
 
-  // Fetch live options and optionAxis for the top matching results (up to 25 items)
-  const detailedResults = await Promise.all(
-    matches.slice(0, 25).map(async (item) => {
-      const details = await fetchLiveItemDetails(item.id);
-      if (details) return details;
-      return {
+  // Fetch live options sequentially or in small paced batches of 3 to avoid 503 rate limits
+  const topMatches = matches.slice(0, 10);
+  const detailedResults = [];
+
+  for (const item of topMatches) {
+    const details = await fetchLiveItemDetails(item.id);
+    if (details) {
+      detailedResults.push(details);
+    } else {
+      detailedResults.push({
         storeProductId: String(item.id),
         productUrl: `https://demo.inelabteamdev.com/item/${item.id}`,
         name: item.name,
@@ -131,11 +149,22 @@ export async function searchCatalog(query) {
         brand: item.brand,
         sku: item.sku,
         optionAxis: 'Option',
-        options: ['Standard'],
+        options: [],
         imageUrl: null
-      };
-    })
-  );
+      });
+    }
+    // Polite 40ms pause between live requests
+    await new Promise((r) => setTimeout(r, 40));
+  }
+
+  // If query contains a 4-digit product ID (e.g. 2491), ensure it's in the results
+  const idMatch = q.match(/\b(2\d{3})\b/);
+  if (idMatch) {
+    const directItem = await fetchLiveItemDetails(idMatch[1]);
+    if (directItem && !detailedResults.some((r) => r.storeProductId === directItem.storeProductId)) {
+      detailedResults.unshift(directItem);
+    }
+  }
 
   return detailedResults;
 }

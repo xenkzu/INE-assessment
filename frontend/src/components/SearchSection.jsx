@@ -10,6 +10,13 @@ export default function SearchSection({ onProductTracked, trackedProducts }) {
   const [trackingKey, setTrackingKey] = useState(null);
   const [error, setError] = useState(null);
 
+  // Helper to safely extract option string from string or object
+  const getOptionLabel = (opt) => {
+    if (!opt) return 'Standard';
+    if (typeof opt === 'string') return opt;
+    return opt.label || opt.name || opt.id || String(opt);
+  };
+
   // Helper to extract product properties regardless of naming convention
   const getProductInfo = (p) => {
     const id = p.storeProductId || p.id;
@@ -37,7 +44,7 @@ export default function SearchSection({ onProductTracked, trackedProducts }) {
         (data || []).forEach((item) => {
           const info = getProductInfo(item);
           if (info.options.length > 0) {
-            const firstOpt = typeof info.options[0] === 'string' ? info.options[0] : info.options[0].name;
+            const firstOpt = getOptionLabel(info.options[0]);
             initialSelections[info.id] = firstOpt;
           }
         });
@@ -65,9 +72,7 @@ export default function SearchSection({ onProductTracked, trackedProducts }) {
     const chosenOption =
       selectedOptions[info.id] ||
       (info.options.length > 0
-        ? typeof info.options[0] === 'string'
-          ? info.options[0]
-          : info.options[0].name
+        ? getOptionLabel(info.options[0])
         : 'Standard');
 
     const key = `${info.id}_${chosenOption}`;
@@ -156,9 +161,7 @@ export default function SearchSection({ onProductTracked, trackedProducts }) {
             const currentOption =
               selectedOptions[product.id] ||
               (product.options.length > 0
-                ? typeof product.options[0] === 'string'
-                  ? product.options[0]
-                  : product.options[0].name
+                ? getOptionLabel(product.options[0])
                 : 'Standard');
 
             const isTracked = isAlreadyTracked(product.id, currentOption);
@@ -194,7 +197,7 @@ export default function SearchSection({ onProductTracked, trackedProducts }) {
                         onChange={(e) => handleOptionChange(product.id, e.target.value)}
                       >
                         {product.options.map((opt) => {
-                          const optName = typeof opt === 'string' ? opt : opt.name;
+                          const optName = getOptionLabel(opt);
                           return (
                             <option key={optName} value={optName}>
                               {optName}

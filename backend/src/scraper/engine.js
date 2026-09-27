@@ -13,22 +13,23 @@ process.env.PLAYWRIGHT_BROWSERS_PATH = process.env.PLAYWRIGHT_BROWSERS_PATH || '
 export function parsePrice(text) {
   if (!text) return null;
 
-  // 1. Remove zero-width non-printable unicode artifacts
-  let clean = text.replace(/[\u200B-\u200D\uFEFF]/g, '');
+  // 1. Remove zero-width non-printable unicode artifacts and non-breaking spaces
+  let clean = text.replace(/[\u200B-\u200D\uFEFF\u00A0]/g, ' ');
 
-  // 2. Filter out non-price tags like savings, member prices, attempts
+  // 2. Filter out non-price tags like savings, member prices, tax suffixes, attempts
   clean = clean.replace(/Member\s*price\s*[₹$€£Rs.]*\s*[\d,\s.]+/gi, '');
   clean = clean.replace(/\d+%\s*saving/gi, '');
   clean = clean.replace(/Loaded\s*in\s*\d+\s*attempt/gi, '');
   clean = clean.replace(/Stock:?\s*\d+\s*remaining/gi, '');
   clean = clean.replace(/Check\s*again/gi, '');
+  clean = clean.replace(/\(incl\.\s*of\s*all\s*taxes\)/gi, '');
+  clean = clean.replace(/\/-/, '');
 
   // 3. Match currency expressions
   const matches = Array.from(clean.matchAll(/(?:₹|Rs\.?|\$|€|£)\s*([\d\s,]+(?:\.\d{1,2})?)/gi));
 
   if (matches.length > 0) {
-    // Take the last/active matched price
-    const rawVal = matches[matches.length - 1][1];
+    const rawVal = matches[0][1];
     const normalized = rawVal.replace(/,/g, '').replace(/\s+/g, '');
     const num = parseFloat(normalized);
     if (!isNaN(num) && num > 0) return num;
@@ -209,21 +210,25 @@ export async function scrapeProductVariant({
         const panel = document.querySelector('.offer-panel');
         if (!panel) return { text: '', priceText: '', stockText: '', title: '', selectedOpt: '' };
 
-        // Clone offer-row to safely clean elements without mutating live DOM
         const row = panel.querySelector('.offer-row');
         let priceText = '';
         if (row) {
-          const clone = row.cloneNode(true);
-          // Remove hidden honeypot tags
-          clone.querySelectorAll('[style*="display: none"], [aria-hidden="true"]').forEach(e => e.remove());
-          // Remove strikethrough / original prices
-          clone.querySelectorAll('[style*="line-through"], .vbt-n6').forEach(e => e.remove());
-          // Remove member price and savings labels
-          clone.querySelectorAll('.zon-n6, .yfo-n6, [class*="saving"]').forEach(e => e.remove());
+          // Iterate over all children of .offer-row to find the real selling price element
+          const children = Array.from(row.children);
+          for (const child of children) {
+            const style = window.getComputedStyle(child);
+            const isHidden = style.display === 'none' || child.getAttribute('aria-hidden') === 'true' || child.getAttribute('style')?.includes('display: none') || child.classList.contains('price-value') || child.classList.contains('amount');
+            const isStrike = style.textDecorationLine.includes('line-through') || child.getAttribute('style')?.includes('line-through') || child.classList.contains('vbt-n6');
+            const text = (child.innerText || '').trim();
+            const isMemberPrice = text.toLowerCase().includes('member price') || child.classList.contains('zon-n6');
+            const isSaving = text.includes('%') || text.toLowerCase().includes('saving') || child.classList.contains('yfo-n6');
+            const isRefreshing = text.toLowerCase().includes('refreshing');
 
-          // The remaining bold tag is the exact active selling price
-          const boldEl = clone.querySelector('b, .dpe-n6, .vtdmtfm') || clone;
-          priceText = boldEl.innerText.trim();
+            if (!isHidden && !isStrike && !isMemberPrice && !isSaving && !isRefreshing && /[₹$€£\d]/.test(text)) {
+              priceText = text;
+              break;
+            }
+          }
         }
 
         const availEl = panel.querySelector('.avail-pill, [class*="avail"], .sjl-n6');
