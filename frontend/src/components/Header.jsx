@@ -50,7 +50,7 @@ export default function Header({ onRefresh, loading }) {
   }, []);
 
   return (
-    <header style={{ marginBottom: '64px', borderBottom: '1px solid var(--color-border)', paddingBottom: '32px' }}>
+    <header className="animate-fade-in-up" style={{ marginBottom: '64px', borderBottom: '1px solid var(--color-border)', paddingBottom: '32px' }}>
       <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: '28px' }}>
         {/* Main Topic Heading & Subtitle */}
         <div>

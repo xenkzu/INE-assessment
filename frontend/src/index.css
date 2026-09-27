@@ -121,23 +121,26 @@ body {
   margin-bottom: 72px;
 }
 
-/* Card Styling with Generous Breathing Room */
+/* Card Styling with Generous Breathing Room & Fluid Micro-Interactions */
 .card-rounded {
   border-radius: var(--radius-card);
   border: 1px solid var(--color-border);
   background-color: var(--color-surface);
   padding: 30px 26px;
-  transition: all 0.2s ease-in-out;
+  transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.35s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.25s ease;
+  will-change: transform, box-shadow;
 }
 
 .card-rounded:hover {
   border-color: var(--color-border-hover);
+  transform: translateY(-4px);
+  box-shadow: 0 16px 36px -10px rgba(0, 0, 0, 0.08), 0 4px 14px -2px rgba(0, 0, 0, 0.03);
 }
 
-/* Dual Tone Date/Stat Badge */
+/* Dual Tone Date/Stat Badge (Exact 38px height matching action buttons) */
 .dual-badge {
   display: inline-flex;
-  align-items: center;
+  align-items: stretch;
   border-radius: var(--radius-pill);
   border: 1px solid #27272A;
   overflow: hidden;
@@ -145,19 +148,36 @@ body {
   font-weight: 600;
   letter-spacing: 0.03em;
   line-height: 1;
+  min-height: 38px;
+  height: 38px;
+  box-sizing: border-box;
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s ease;
+}
+
+.dual-badge:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(39, 39, 42, 0.1);
 }
 
 .dual-badge-left {
   background-color: #27272A;
   color: #FFFFFF;
-  padding: 6px 12px;
+  padding: 0 16px;
   text-transform: uppercase;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
 }
 
 .dual-badge-right {
   background-color: #FFFFFF;
   color: #27272A;
-  padding: 6px 12px;
+  padding: 0 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
 }
 
 /* Solid Charcoal Pill Badge with 1-line truncation and smooth hover reveal */
@@ -177,13 +197,14 @@ body {
   overflow: hidden;
   text-overflow: ellipsis;
   cursor: default;
-  transition: max-width 0.35s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s ease, background-color 0.15s ease;
+  transition: max-width 0.35s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s ease, background-color 0.2s ease, transform 0.2s ease;
   flex-shrink: 0;
 }
 
 .dark-pill:hover {
   max-width: 360px;
-  box-shadow: 0 4px 14px rgba(39, 39, 42, 0.2);
+  box-shadow: 0 6px 16px rgba(39, 39, 42, 0.2);
+  transform: translateY(-1px);
 }
 
 .dark-pill span {
@@ -198,7 +219,7 @@ body {
   text-overflow: clip;
 }
 
-/* Filter Chip with Breathing Room */
+/* Filter Chip with Fluid Micro-Interactions */
 .filter-chip {
   padding: 10px 20px;
   border-radius: var(--radius-pill);
@@ -208,20 +229,34 @@ body {
   border: 1px solid var(--color-border);
   color: #52525B;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease, box-shadow 0.22s ease;
   white-space: nowrap;
+  will-change: transform;
 }
 
-.filter-chip.active, .filter-chip:hover {
+.filter-chip:hover {
   background: #27272A;
   border-color: #27272A;
   color: #FFFFFF;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(39, 39, 42, 0.14);
+}
+
+.filter-chip:active {
+  transform: scale(0.96) translateY(0);
+}
+
+.filter-chip.active {
+  background: #27272A;
+  border-color: #27272A;
+  color: #FFFFFF;
+  box-shadow: 0 4px 12px rgba(39, 39, 42, 0.12);
 }
 
 /* Pulsing Green Live Indicator */
 @keyframes pulse-ring {
   0% { transform: scale(0.95); opacity: 0.8; }
-  50% { transform: scale(1.4); opacity: 0; }
+  50% { transform: scale(1.5); opacity: 0; }
   100% { transform: scale(0.95); opacity: 0; }
 }
 
@@ -246,13 +281,16 @@ body {
   animation: pulse-ring 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
 
-/* Pill Buttons */
+/* Tactile Pill Buttons with Matching 38px Height */
 .btn-pill-primary {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
-  padding: 10px 20px;
+  padding: 0 20px;
+  min-height: 38px;
+  height: 38px;
+  box-sizing: border-box;
   background-color: #27272A;
   color: #FFFFFF;
   border-radius: var(--radius-pill);
@@ -260,12 +298,19 @@ body {
   font-weight: 600;
   border: none;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.2s ease, box-shadow 0.2s ease;
   text-decoration: none;
+  will-change: transform;
 }
 
 .btn-pill-primary:hover {
   background-color: #3F3F46;
+  transform: translateY(-1.5px);
+  box-shadow: 0 6px 16px rgba(39, 39, 42, 0.18);
+}
+
+.btn-pill-primary:active {
+  transform: scale(0.96) translateY(0);
 }
 
 .btn-pill-secondary {
@@ -273,7 +318,10 @@ body {
   align-items: center;
   justify-content: center;
   gap: 8px;
-  padding: 10px 18px;
+  padding: 0 18px;
+  min-height: 38px;
+  height: 38px;
+  box-sizing: border-box;
   background-color: #FFFFFF;
   color: var(--color-text);
   border-radius: var(--radius-pill);
@@ -281,13 +329,20 @@ body {
   font-weight: 500;
   border: 1px solid var(--color-border);
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
   text-decoration: none;
+  will-change: transform;
 }
 
 .btn-pill-secondary:hover {
   background-color: #F4F4F5;
   border-color: #D4D4D8;
+  transform: translateY(-1.5px);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.06);
+}
+
+.btn-pill-secondary:active {
+  transform: scale(0.96) translateY(0);
 }
 
 .btn-pill-danger {
@@ -299,12 +354,17 @@ body {
   background: transparent;
   border: none;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .btn-pill-danger:hover {
   color: var(--color-rose);
   background-color: var(--color-rose-bg);
+  transform: translateY(-1px);
+}
+
+.btn-pill-danger:active {
+  transform: scale(0.96);
 }
 
 .btn-pill-disabled {
@@ -315,7 +375,10 @@ body {
   cursor: not-allowed;
   font-size: 12px;
   font-weight: 500;
-  padding: 10px 18px;
+  padding: 0 18px;
+  min-height: 38px;
+  height: 38px;
+  box-sizing: border-box;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -370,7 +433,31 @@ body {
   animation: shimmerAnimation 1.4s ease-in-out infinite;
 }
 
-/* Modal & Dialog Styling */
+/* Modal & Dialog Styling with Awwwards-Grade Smooth Animations */
+@keyframes modalBackdropFade {
+  from {
+    opacity: 0;
+    backdrop-filter: blur(0px);
+    -webkit-backdrop-filter: blur(0px);
+  }
+  to {
+    opacity: 1;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+  }
+}
+
+@keyframes modalPopIn {
+  0% {
+    opacity: 0;
+    transform: scale(0.93) translateY(20px);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
 .modal-overlay {
   position: fixed;
   top: 0;
@@ -378,20 +465,21 @@ body {
   right: 0;
   bottom: 0;
   background-color: rgba(39, 39, 42, 0.45);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 1000;
   padding: 32px;
+  animation: modalBackdropFade 0.26s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 .modal-content {
   background-color: var(--color-surface);
   border-radius: var(--radius-modal);
   border: 1px solid var(--color-border);
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 28px 64px -14px rgba(0, 0, 0, 0.22), 0 8px 24px -6px rgba(0, 0, 0, 0.08);
   width: 100%;
   max-width: 980px;
   max-height: 88vh;
@@ -399,6 +487,8 @@ body {
   padding: 40px 44px;
   position: relative;
   box-sizing: border-box;
+  animation: modalPopIn 0.34s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  will-change: transform, opacity;
 }
 
 .modal-header {
@@ -420,13 +510,18 @@ body {
   justify-content: center;
   color: var(--color-text);
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.18s ease, color 0.18s ease;
   flex-shrink: 0;
 }
 
 .close-btn:hover {
   background-color: #E4E4E7;
   color: #27272A;
+  transform: scale(1.08) rotate(90deg);
+}
+
+.close-btn:active {
+  transform: scale(0.92) rotate(90deg);
 }
 
 /* Stat Grid for Modal */
@@ -445,6 +540,13 @@ body {
   display: flex;
   flex-direction: column;
   justify-content: space-between;
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s ease, border-color 0.2s ease;
+}
+
+.modal-stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 22px -4px rgba(0, 0, 0, 0.06);
+  border-color: #D4D4D8;
 }
 
 @media (max-width: 768px) {
@@ -494,8 +596,12 @@ body {
   border-bottom: none;
 }
 
+.data-table tbody tr {
+  transition: background-color 0.18s ease;
+}
+
 .data-table tbody tr:hover td {
-  background-color: #FAFAFB;
+  background-color: #F8F8FA;
 }
 
 /* Badges */
@@ -507,6 +613,7 @@ body {
   font-weight: 500;
   padding: 4px 12px;
   border-radius: var(--radius-pill);
+  transition: transform 0.2s ease;
 }
 
 .badge-success {
@@ -515,14 +622,48 @@ body {
   border: 1px solid var(--color-emerald-border);
 }
 
-.badge-retried {
-  background-color: var(--color-amber-bg);
-  color: var(--color-amber-text);
-  border: 1px solid var(--color-amber-border);
-}
-
 .badge-failed {
   background-color: var(--color-rose-bg);
   color: var(--color-rose-text);
   border: 1px solid var(--color-rose-border);
 }
+
+/* Awwwards-Grade Staggered Entrance Animations */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeInScale {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.animate-fade-in-up {
+  animation: fadeInUp 0.55s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.animate-fade-in-scale {
+  animation: fadeInScale 0.48s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.delay-1 { animation-delay: 0.04s; }
+.delay-2 { animation-delay: 0.08s; }
+.delay-3 { animation-delay: 0.12s; }
+.delay-4 { animation-delay: 0.16s; }
+.delay-5 { animation-delay: 0.20s; }
+.delay-6 { animation-delay: 0.24s; }
+.delay-7 { animation-delay: 0.28s; }
+.delay-8 { animation-delay: 0.32s; }

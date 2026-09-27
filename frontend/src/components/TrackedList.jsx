@@ -158,7 +158,7 @@ export default function TrackedList({ trackedProducts, onRefresh, onViewHistory 
   };
 
   return (
-    <section className="section-container">
+    <section className="section-container animate-fade-in-up delay-1">
       {/* Section Header with Metrics */}
       <div style={{ display: 'flex', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '24px', marginBottom: '36px' }}>
         <div>
@@ -206,14 +206,14 @@ export default function TrackedList({ trackedProducts, onRefresh, onViewHistory 
 
       {/* Tracked Cards Grid */}
       {trackedProducts.length === 0 ? (
-        <div className="card-rounded" style={{ textAlign: 'center', padding: '72px 32px', color: 'var(--color-text-muted)' }}>
+        <div className="card-rounded animate-fade-in-scale" style={{ textAlign: 'center', padding: '72px 32px', color: 'var(--color-text-muted)' }}>
           <AlertCircle size={40} style={{ marginBottom: '16px', opacity: 0.4 }} />
           <p style={{ fontWeight: 600, fontSize: '16px', color: 'var(--color-text)', marginBottom: '8px' }}>No tracked products yet</p>
           <p style={{ fontSize: '16px', color: 'var(--color-text-muted)' }}>Search the store catalog below to pick products and options to monitor.</p>
         </div>
       ) : (
         <div className="grid-responsive-4">
-          {trackedProducts.map((p) => {
+          {trackedProducts.map((p, idx) => {
             const isDeleting = deletingId === p.id;
             const name = p.product_name || p.name || 'Product';
             const url = p.product_url || p.url || (p.store_product_id ? `https://demo.inelabteamdev.com/item/${p.store_product_id}` : '#');
@@ -222,9 +222,10 @@ export default function TrackedList({ trackedProducts, onRefresh, onViewHistory 
             const stock = p.latestStock ?? p.last_stock_status;
             const scrapedAt = p.lastScrapedAt ?? p.last_scraped_at;
             const status = p.lastOutcome ?? p.last_scrape_status ?? 'pending';
+            const delayClass = `delay-${Math.min(8, (idx % 8) + 1)}`;
 
             return (
-              <div key={p.id} className="card-rounded" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+              <div key={p.id} className={`card-rounded animate-fade-in-scale ${delayClass}`} style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
                 <div>
                   {/* Card Header Pills */}
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', marginBottom: '18px' }}>

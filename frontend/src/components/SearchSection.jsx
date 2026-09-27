@@ -131,7 +131,7 @@ export default function SearchSection({ onProductTracked, trackedProducts }) {
   ];
 
   return (
-    <section className="section-container">
+    <section className="section-container animate-fade-in-up delay-2">
       {/* Section Topic */}
       <div style={{ marginBottom: '36px' }}>
         <h2 className="title-h1">Discover More Products</h2>
@@ -171,7 +171,8 @@ export default function SearchSection({ onProductTracked, trackedProducts }) {
                 padding: '12px 52px 12px 48px',
                 color: 'var(--color-text)',
                 outline: 'none',
-                fontFamily: 'var(--font-family)'
+                fontFamily: 'var(--font-family)',
+                transition: 'all 0.25s cubic-bezier(0.16, 1, 0.3, 1)'
               }}
             />
             <span style={{
@@ -225,13 +226,13 @@ export default function SearchSection({ onProductTracked, trackedProducts }) {
           <span style={{ fontSize: '16px', fontWeight: 500 }}>Searching live store catalog...</span>
         </div>
       ) : filteredResults.length === 0 ? (
-        <div className="card-rounded" style={{ textAlign: 'center', padding: '60px 24px', color: 'var(--color-text-muted)' }}>
+        <div className="card-rounded animate-fade-in-scale" style={{ textAlign: 'center', padding: '60px 24px', color: 'var(--color-text-muted)' }}>
           <p style={{ fontWeight: 600, fontSize: '16px', color: 'var(--color-text)' }}>No products matched your search</p>
           <p style={{ fontSize: '16px', marginTop: '6px' }}>Try searching by another term or clearing the category filter.</p>
         </div>
       ) : (
         <div className="grid-responsive-4" id="catalog-grid">
-          {filteredResults.map((rawProduct) => {
+          {filteredResults.map((rawProduct, idx) => {
             const product = getProductInfo(rawProduct);
             const currentOption =
               selectedOptions[product.id] ||
@@ -241,9 +242,10 @@ export default function SearchSection({ onProductTracked, trackedProducts }) {
 
             const isTracked = isAlreadyTracked(product.id, currentOption);
             const isCurrentlyTracking = trackingKey === `${product.id}_${currentOption}`;
+            const delayClass = `delay-${Math.min(8, (idx % 8) + 1)}`;
 
             return (
-              <article key={product.id} className="card-rounded" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+              <article key={product.id} className={`card-rounded animate-fade-in-scale ${delayClass}`} style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
                 <div>
                   {/* Top Badges */}
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '18px' }}>
