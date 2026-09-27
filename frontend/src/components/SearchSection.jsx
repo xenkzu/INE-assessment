@@ -1,29 +1,43 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../api/client';
-import { Search, Plus, Check, Loader2, Package } from 'lucide-react';
+import { Search, Plus, Check, Loader2 } from 'lucide-react';
 
 export default function SearchSection({ onProductTracked, trackedProducts }) {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
   const [selectedOptions, setSelectedOptions] = useState({});
-  const [trackingId, setTrackingId] = useState(null);
+  const [trackingKey, setTrackingKey] = useState(null);
   const [error, setError] = useState(null);
 
-  // Search catalog on query change (with initial fetch)
+  // Helper to extract product properties regardless of naming convention
+  const getProductInfo = (p) => {
+    const id = p.storeProductId || p.id;
+    const name = p.name || p.title || 'Product';
+    const url = p.productUrl || p.url || `https://demo.inelabteamdev.com/item/${id}`;
+    const brand = p.brand || '';
+    const category = p.category || '';
+    const options = Array.isArray(p.options) ? p.options : [];
+    const image = p.imageUrl || p.image || null;
+    return { id, name, url, brand, category, options, image };
+  };
+
+  // Search catalog on query change (with debouncing)
   useEffect(() => {
     const fetchCatalog = async () => {
       setLoading(true);
       setError(null);
       try {
         const data = await api.searchProducts(query);
-        setResults(data);
+        setResults(data || []);
 
-        // Set default option for each product
+        // Set default option for each product if available
         const initialSelections = {};
-        data.forEach((p) => {
-          if (p.options && p.options.length > 0) {
-            initialSelections[p.id] = p.options[0].name || p.options[0];
+        (data || []).forEach((item) => {
+          const info = getProductInfo(item);
+          if (info.options.length > 0) {
+            const firstOpt = typeof info.options[0] === 'string' ? info.options[0] : info.options[0].name;
+            initialSelections[info.id] = firstOpt;
           }
         });
         setSelectedOptions((prev) => ({ ...initialSelections, ...prev }));
@@ -45,18 +59,27 @@ export default function SearchSection({ onProductTracked, trackedProducts }) {
     }));
   };
 
-  const handleTrack = async (product) => {
-    const chosenOption = selectedOptions[product.id] || (product.options?.[0]?.name || 'Default');
-    setTrackingId(`${product.id}_${chosenOption}`);
+  const handleTrack = async (item) => {
+    const info = getProductInfo(item);
+    const chosenOption =
+      selectedOptions[info.id] ||
+      (info.options.length > 0
+        ? typeof info.options[0] === 'string'
+          ? info.options[0]
+          : info.options[0].name
+        : 'Standard');
+
+    const key = `${info.id}_${chosenOption}`;
+    setTrackingKey(key);
     setError(null);
 
     try {
       await api.trackProduct({
-        storeProductId: product.id,
-        productUrl: product.url,
-        productName: product.title,
+        storeProductId: String(info.id),
+        productUrl: info.url,
+        productName: info.name,
         selectedOption: chosenOption,
-        imageUrl: product.image
+        imageUrl: info.image
       });
       if (onProductTracked) {
         await onProductTracked();
@@ -64,14 +87,14 @@ export default function SearchSection({ onProductTracked, trackedProducts }) {
     } catch (err) {
       setError(err.message || 'Failed to track product');
     } finally {
-      setTrackingId(null);
+      setTrackingKey(null);
     }
   };
 
   // Check if a specific product & option is already tracked
   const isAlreadyTracked = (productId, option) => {
     return trackedProducts?.some(
-      (tp) => tp.store_product_id === productId && tp.selected_option === option
+      (tp) => String(tp.store_product_id) === String(productId) && tp.selected_option === option
     );
   };
 
@@ -127,17 +150,25 @@ export default function SearchSection({ onProductTracked, trackedProducts }) {
         </p>
       ) : (
         <div className="grid-cards">
-          {results.map((product) => {
-            const currentOption = selectedOptions[product.id] || (product.options?.[0]?.name || 'Default');
+          {results.map((rawProduct) => {
+            const product = getProductInfo(rawProduct);
+            const currentOption =
+              selectedOptions[product.id] ||
+              (product.options.length > 0
+                ? typeof product.options[0] === 'string'
+                  ? product.options[0]
+                  : product.options[0].name
+                : 'Standard');
+
             const isTracked = isAlreadyTracked(product.id, currentOption);
-            const isCurrentlyTracking = trackingId === `${product.id}_${currentOption}`;
+            const isCurrentlyTracking = trackingKey === `${product.id}_${currentOption}`;
 
             return (
               <div key={product.id} className="product-item-card">
                 <div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
                     <h3 style={{ fontSize: '18px', fontWeight: 600, color: 'var(--color-text)' }}>
-                      {product.title}
+                      {product.name}
                     </h3>
                     {product.brand && (
                       <span style={{ fontSize: '12px', color: 'var(--color-text-muted)', background: '#f0f0f0', padding: '2px 8px', borderRadius: '4px' }}>
@@ -147,7 +178,7 @@ export default function SearchSection({ onProductTracked, trackedProducts }) {
                   </div>
 
                   <p style={{ fontSize: '14px', color: 'var(--color-text-muted)', marginBottom: '14px' }}>
-                    {product.category || 'Store Item'}
+                    {product.category || 'Store Item'} • ID: {product.id}
                   </p>
 
                   {product.options && product.options.length > 0 && (
@@ -175,14 +206,14 @@ export default function SearchSection({ onProductTracked, trackedProducts }) {
                 </div>
 
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '12px', paddingTop: '12px', borderTop: '1px solid var(--color-border-light)' }}>
-                  <span style={{ fontSize: '15px', fontWeight: 600, color: 'var(--color-text)' }}>
-                    {product.price ? `$${product.price}` : 'Check Price'}
+                  <span style={{ fontSize: '13px', color: 'var(--color-text-muted)' }}>
+                    Auto-scraped 2h
                   </span>
 
                   <button
                     className={`btn ${isTracked ? '' : 'btn-primary'}`}
                     disabled={isTracked || isCurrentlyTracking}
-                    onClick={() => handleTrack(product)}
+                    onClick={() => handleTrack(rawProduct)}
                     style={{ padding: '8px 14px', fontSize: '14px' }}
                   >
                     {isCurrentlyTracking ? (

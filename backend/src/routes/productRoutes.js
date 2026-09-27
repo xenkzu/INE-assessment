@@ -50,17 +50,30 @@ productRouter.get('/tracked', async (req, res) => {
  */
 productRouter.post('/track', async (req, res) => {
   try {
-    const { storeProductId, productUrl, productName, selectedOption, imageUrl } = req.body;
-    if (!storeProductId || !productUrl || !productName || !selectedOption) {
-      return res.status(400).json({ error: 'Missing required product parameters.' });
+    let { storeProductId, productUrl, productName, selectedOption, imageUrl } = req.body;
+    
+    if (!storeProductId) {
+      return res.status(400).json({ error: 'Missing storeProductId.' });
+    }
+
+    if (!productUrl) {
+      productUrl = `https://demo.inelabteamdev.com/item/${storeProductId}`;
+    }
+
+    if (!productName) {
+      productName = `Product ${storeProductId}`;
+    }
+
+    if (!selectedOption) {
+      selectedOption = 'Standard';
     }
 
     const result = await productService.trackProduct({
-      storeProductId,
+      storeProductId: String(storeProductId),
       productUrl,
       productName,
       selectedOption,
-      imageUrl
+      imageUrl: imageUrl || null
     });
 
     res.status(201).json(result);
