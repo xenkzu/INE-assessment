@@ -45,57 +45,65 @@ export const cronService = {
       let failed = 0;
       const summaries = [];
 
-      // 2. Sequential scrape with polite 1.5s intervals between products
-      for (const prod of products) {
-        console.log(`[Cron] Scraping product ${prod.store_product_id} (${prod.selected_option})...`);
+      // 2. Parallel scrape with controlled concurrency of 2 workers
+      const CONCURRENCY = 2;
+      const queue = [...products];
 
-        const result = await scrapeProductVariant({
-          url: prod.product_url,
-          option: prod.selected_option
-        });
+      async function worker() {
+        while (queue.length > 0) {
+          const prod = queue.shift();
+          if (!prod) break;
 
-        if (result.outcome === 'success') successful++;
-        else if (result.outcome === 'retried') retried++;
-        else failed++;
+          console.log(`[Cron] Scraping product ${prod.store_product_id} (${prod.selected_option})...`);
 
-        // 3. Log attempt
-        await supabase.from('scrape_logs').insert({
-          product_id: prod.id,
-          store_product_id: prod.store_product_id,
-          product_name: prod.product_name,
-          selected_option: prod.selected_option,
-          timestamp: new Date().toISOString(),
-          price: result.price,
-          stock: result.stock,
-          outcome: result.outcome,
-          retry_count: result.retryCount,
-          error_message: result.errorMessage,
-          duration_ms: result.durationMs
-        });
+          const result = await scrapeProductVariant({
+            url: prod.product_url,
+            option: prod.selected_option
+          });
 
-        // 4. Update price_history if not failed
-        if (result.price !== null) {
-          await supabase.from('price_history').insert({
+          if (result.outcome === 'success') successful++;
+          else if (result.outcome === 'retried') retried++;
+          else failed++;
+
+          // 3. Log attempt
+          await supabase.from('scrape_logs').insert({
             product_id: prod.id,
+            store_product_id: prod.store_product_id,
+            product_name: prod.product_name,
+            selected_option: prod.selected_option,
+            timestamp: new Date().toISOString(),
             price: result.price,
-            stock: result.stock || 'In Stock',
-            recorded_at: new Date().toISOString()
+            stock: result.stock,
+            outcome: result.outcome,
+            retry_count: result.retryCount,
+            error_message: result.errorMessage,
+            duration_ms: result.durationMs
+          });
+
+          // 4. Update price_history if not failed
+          if (result.price !== null) {
+            await supabase.from('price_history').insert({
+              product_id: prod.id,
+              price: result.price,
+              stock: result.stock || 'In Stock',
+              recorded_at: new Date().toISOString()
+            });
+          }
+
+          summaries.push({
+            storeProductId: prod.store_product_id,
+            productName: prod.product_name,
+            selectedOption: prod.selected_option,
+            outcome: result.outcome,
+            price: result.price,
+            stock: result.stock,
+            retryCount: result.retryCount
           });
         }
-
-        summaries.push({
-          storeProductId: prod.store_product_id,
-          productName: prod.product_name,
-          selectedOption: prod.selected_option,
-          outcome: result.outcome,
-          price: result.price,
-          stock: result.stock,
-          retryCount: result.retryCount
-        });
-
-        // Polite pause between requests to prevent storefront throttling
-        await new Promise((res) => setTimeout(res, 1500));
       }
+
+      const workers = Array.from({ length: Math.min(CONCURRENCY, products.length) }, () => worker());
+      await Promise.all(workers);
 
       const durationMs = Date.now() - startTime;
       console.log(`[Cron] Batch scrape cycle finished in ${(durationMs / 1000).toFixed(2)}s: ${successful} success, ${retried} retried, ${failed} failed.`);

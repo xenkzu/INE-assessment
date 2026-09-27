@@ -85,43 +85,48 @@ export const productService = {
       .select()
       .single();
 
-    if (insertError) throw insertError;
+    // 2. Perform initial scrape asynchronously in the background so frontend updates immediately
+    (async () => {
+      try {
+        console.log(`[Tracking] Initiating background initial scrape for product ${storeProductId} (${selectedOption})...`);
+        const scrapeResult = await scrapeProductVariant({
+          url: productUrl,
+          option: selectedOption
+        });
 
-    // 2. Perform immediate initial scrape
-    console.log(`[Tracking] Initiating immediate initial scrape for product ${storeProductId} (${selectedOption})...`);
-    const scrapeResult = await scrapeProductVariant({
-      url: productUrl,
-      option: selectedOption
-    });
+        // 3. Log scrape attempt
+        await supabase.from('scrape_logs').insert({
+          product_id: product.id,
+          store_product_id: storeProductId,
+          product_name: productName,
+          selected_option: selectedOption,
+          timestamp: new Date().toISOString(),
+          price: scrapeResult.price,
+          stock: scrapeResult.stock,
+          outcome: scrapeResult.outcome,
+          retry_count: scrapeResult.retryCount,
+          error_message: scrapeResult.errorMessage,
+          duration_ms: scrapeResult.durationMs
+        });
 
-    // 3. Log scrape attempt
-    await supabase.from('scrape_logs').insert({
-      product_id: product.id,
-      store_product_id: storeProductId,
-      product_name: productName,
-      selected_option: selectedOption,
-      timestamp: new Date().toISOString(),
-      price: scrapeResult.price,
-      stock: scrapeResult.stock,
-      outcome: scrapeResult.outcome,
-      retry_count: scrapeResult.retryCount,
-      error_message: scrapeResult.errorMessage,
-      duration_ms: scrapeResult.durationMs
-    });
-
-    // 4. Record in price_history if successful or retried
-    if (scrapeResult.price !== null) {
-      await supabase.from('price_history').insert({
-        product_id: product.id,
-        price: scrapeResult.price,
-        stock: scrapeResult.stock || 'In Stock',
-        recorded_at: new Date().toISOString()
-      });
-    }
+        // 4. Record in price_history if successful or retried
+        if (scrapeResult.price !== null) {
+          await supabase.from('price_history').insert({
+            product_id: product.id,
+            price: scrapeResult.price,
+            stock: scrapeResult.stock || 'In Stock',
+            recorded_at: new Date().toISOString()
+          });
+        }
+        console.log(`[Tracking] Initial scrape finished for product ${storeProductId}: ${scrapeResult.outcome} (Price: ${scrapeResult.price})`);
+      } catch (err) {
+        console.error(`[Tracking] Error in initial background scrape for product ${storeProductId}:`, err);
+      }
+    })();
 
     return {
       product,
-      initialScrape: scrapeResult
+      message: 'Product added to tracking schedule'
     };
   },
 
