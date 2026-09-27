@@ -1,8 +1,24 @@
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import { launchResilientBrowser } from './engine.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // Baseline catalogue of products from https://demo.inelabteamdev.com/
 // Allows instant search response times (<10ms) and avoids cold-start latency
 const BASELINE_PRODUCTS = [
+  {
+    storeProductId: "2945",
+    productUrl: "https://demo.inelabteamdev.com/item/2945",
+    name: "Orbisk Digital Piano Arc",
+    category: "INSTRUMENTS",
+    brand: "Orbisk",
+    sku: "SKU SK-2945-OR",
+    options: ["Instrument only", "Starter bundle", "Studio bundle", "Stage bundle"],
+    imageUrl: null
+  },
   {
     storeProductId: "2111",
     productUrl: "https://demo.inelabteamdev.com/item/2111",
@@ -20,7 +36,37 @@ const BASELINE_PRODUCTS = [
     category: "NETWORKING",
     brand: "Mosella",
     sku: "SKU SK-2879-MO",
-    options: ["Standard", "Starter", "Regular", "Deluxe"],
+    options: ["1-pack", "2-pack", "3-pack", "4-pack"],
+    imageUrl: null
+  },
+  {
+    storeProductId: "2833",
+    productUrl: "https://demo.inelabteamdev.com/item/2833",
+    name: "Orbisk Tent Zen",
+    category: "OUTDOOR",
+    brand: "Orbisk",
+    sku: "SKU SK-2833-OR",
+    options: ["Solo", "Duo", "Family", "Group"],
+    imageUrl: null
+  },
+  {
+    storeProductId: "2472",
+    productUrl: "https://demo.inelabteamdev.com/item/2472",
+    name: "Redwick Synthesizer Flex",
+    category: "INSTRUMENTS",
+    brand: "Redwick",
+    sku: "SKU SK-2472-RE",
+    options: ["Standard", "Pro Bundle"],
+    imageUrl: null
+  },
+  {
+    storeProductId: "2491",
+    productUrl: "https://demo.inelabteamdev.com/item/2491",
+    name: "Pinecrest Drawing Tablet Ultra",
+    category: "TABLETS",
+    brand: "Pinecrest",
+    sku: "SKU SK-2491-PI",
+    options: ["64 GB", "128 GB", "256 GB", "512 GB"],
     imageUrl: null
   },
   {
@@ -266,6 +312,25 @@ const BASELINE_PRODUCTS = [
 ];
 
 let cachedCatalog = [...BASELINE_PRODUCTS];
+try {
+  const liveCatalogPath = path.join(__dirname, 'live_catalog.json');
+  if (fs.existsSync(liveCatalogPath)) {
+    const raw = fs.readFileSync(liveCatalogPath, 'utf8');
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed) && parsed.length > 0) {
+      const merged = [...BASELINE_PRODUCTS];
+      parsed.forEach(item => {
+        if (!merged.some(m => m.storeProductId === item.storeProductId)) {
+          merged.push(item);
+        }
+      });
+      cachedCatalog = merged;
+    }
+  }
+} catch (e) {
+  // fallback to BASELINE_PRODUCTS
+}
+
 let lastCatalogFetch = Date.now();
 const CATALOG_CACHE_TTL = 1000 * 60 * 60 * 2; // 2 hours
 

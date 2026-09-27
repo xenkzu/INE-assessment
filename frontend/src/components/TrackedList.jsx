@@ -55,9 +55,7 @@ export default function TrackedList({ trackedProducts, onRefresh, onViewHistory 
     if (priceVal === null || priceVal === undefined) return '—';
     const num = Number(priceVal);
     if (isNaN(num)) return '—';
-    // If integer cents (e.g. 48639), convert to $486.39 if large or display as dollar
-    const displayNum = num > 1000 && Number.isInteger(num) ? num / 100 : num;
-    return `$${displayNum.toFixed(2)}`;
+    return `₹${num.toLocaleString('en-IN')}`;
   };
 
   return (

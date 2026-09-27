@@ -6,19 +6,42 @@ dotenv.config();
 process.env.PLAYWRIGHT_BROWSERS_PATH = process.env.PLAYWRIGHT_BROWSERS_PATH || '0';
 
 /**
- * Normalizes and extracts numeric price from text (handles currency symbols, commas, decimals).
+ * Normalizes and extracts numeric price from text (handles currency symbols, commas, decimals, spaces, and Indian notation).
  * @param {string} text 
  * @returns {number|null}
  */
 export function parsePrice(text) {
   if (!text) return null;
-  // Match currency patterns like ₹31,349, $199.99, €45.00, etc.
-  const match = text.match(/[₹$€£]?\s*([0-9]{1,3}(?:,[0-9]{3})*(?:\.[0-9]{1,2})?|[0-9]+(?:\.[0-9]{1,2})?)/);
-  if (match && match[1]) {
-    const cleanNum = match[1].replace(/,/g, '');
-    const val = parseFloat(cleanNum);
-    return isNaN(val) ? null : val;
+
+  // 1. Remove zero-width non-printable unicode artifacts
+  let clean = text.replace(/[\u200B-\u200D\uFEFF]/g, '');
+
+  // 2. Filter out non-price tags like savings, member prices, attempts
+  clean = clean.replace(/Member\s*price\s*[₹$€£Rs.]*\s*[\d,\s.]+/gi, '');
+  clean = clean.replace(/\d+%\s*saving/gi, '');
+  clean = clean.replace(/Loaded\s*in\s*\d+\s*attempt/gi, '');
+  clean = clean.replace(/Stock:?\s*\d+\s*remaining/gi, '');
+  clean = clean.replace(/Check\s*again/gi, '');
+
+  // 3. Match currency expressions
+  const matches = Array.from(clean.matchAll(/(?:₹|Rs\.?|\$|€|£)\s*([\d\s,]+(?:\.\d{1,2})?)/gi));
+
+  if (matches.length > 0) {
+    // Take the last/active matched price
+    const rawVal = matches[matches.length - 1][1];
+    const normalized = rawVal.replace(/,/g, '').replace(/\s+/g, '');
+    const num = parseFloat(normalized);
+    if (!isNaN(num) && num > 0) return num;
   }
+
+  // Fallback: extract any valid numeric token
+  const fallbackMatch = clean.match(/([\d\s,]+(?:\.\d{1,2})?)/);
+  if (fallbackMatch) {
+    const normalized = fallbackMatch[1].replace(/,/g, '').replace(/\s+/g, '');
+    const num = parseFloat(normalized);
+    if (!isNaN(num) && num > 0) return num;
+  }
+
   return null;
 }
 
@@ -29,12 +52,18 @@ export function parsePrice(text) {
  */
 export function parseStock(text) {
   if (!text) return 'In Stock';
-  if (/out of stock/i.test(text)) return 'Out of Stock';
-  const lastFewMatch = text.match(/LAST FEW:\s*(\d+)/i);
-  if (lastFewMatch) return `Last Few (${lastFewMatch[1]})`;
-  const leftMatch = text.match(/(\d+)\s+left/i);
-  if (leftMatch) return `${leftMatch[1]} left`;
-  if (/in stock/i.test(text) || /delivery/i.test(text) || /seller:/i.test(text)) return 'In Stock';
+  const clean = text.replace(/[\u200B-\u200D\uFEFF]/g, '').trim();
+  if (/out of stock|sold out/i.test(clean)) return 'Out of Stock';
+
+  const remMatch = clean.match(/(?:Stock:?\s*)?(\d+)\s*(?:remaining|available|left)/i);
+  if (remMatch) {
+    const count = parseInt(remMatch[1], 10);
+    return count <= 5 ? `Low Stock (${count} left)` : `In Stock (${count} left)`;
+  }
+
+  const lastFewMatch = clean.match(/LAST\s*FEW:\s*(\d+)/i);
+  if (lastFewMatch) return `Low Stock (${lastFewMatch[1]} left)`;
+
   return 'In Stock';
 }
 
@@ -166,17 +195,45 @@ export async function scrapeProductVariant({
       // 6. Extract price and stock details
       const extraction = await page.evaluate(() => {
         const panel = document.querySelector('.offer-panel');
-        const text = panel ? panel.innerText : '';
-        const title = document.querySelector('h1')?.innerText || '';
-        const selectedOpt = document.querySelector('button.opt-chip.opt-chip-on')?.innerText || '';
-        return { text, title, selectedOpt };
+        if (!panel) return { text: '', priceText: '', stockText: '', title: '', selectedOpt: '' };
+
+        // Clone offer-row to safely clean elements without mutating live DOM
+        const row = panel.querySelector('.offer-row');
+        let priceText = '';
+        if (row) {
+          const clone = row.cloneNode(true);
+          // Remove hidden honeypot tags
+          clone.querySelectorAll('[style*="display: none"], [aria-hidden="true"]').forEach(e => e.remove());
+          // Remove strikethrough / original prices
+          clone.querySelectorAll('[style*="line-through"], .vbt-n6').forEach(e => e.remove());
+          // Remove member price and savings labels
+          clone.querySelectorAll('.zon-n6, .yfo-n6, [class*="saving"]').forEach(e => e.remove());
+
+          // The remaining bold tag is the exact active selling price
+          const boldEl = clone.querySelector('b, .dpe-n6, .vtdmtfm') || clone;
+          priceText = boldEl.innerText.trim();
+        }
+
+        const availEl = panel.querySelector('.avail-pill, [class*="avail"], .sjl-n6');
+        const stockText = availEl ? availEl.innerText.trim() : '';
+
+        const title = document.querySelector('h1')?.innerText?.trim() || '';
+        const selectedOpt = document.querySelector('button.opt-chip.opt-chip-on')?.innerText?.trim() || '';
+
+        return {
+          text: panel.innerText,
+          priceText,
+          stockText,
+          title,
+          selectedOpt
+        };
       });
 
-      const parsedPrice = parsePrice(extraction.text);
-      const parsedStock = parseStock(extraction.text);
+      const parsedPrice = parsePrice(extraction.priceText) || parsePrice(extraction.text);
+      const parsedStock = parseStock(extraction.stockText) || parseStock(extraction.text);
 
       if (parsedPrice === null) {
-        throw new Error(`Could not parse numeric price from panel text: "${extraction.text.slice(0, 100)}"`);
+        throw new Error(`Could not parse numeric price from panel: "${extraction.priceText || extraction.text.slice(0, 100)}"`);
       }
 
       await browser.close();

@@ -162,7 +162,7 @@ export default function HistoryModal({ product, onClose }) {
                           {formatDate(record.recorded_at)}
                         </td>
                         <td style={{ fontWeight: 700, fontSize: '15px' }}>
-                          {record.price !== null ? `$${Number(record.price).toFixed(2)}` : '—'}
+                          {record.price !== null ? `₹${Number(record.price).toLocaleString('en-IN')}` : '—'}
                         </td>
                         <td>
                           <span style={{

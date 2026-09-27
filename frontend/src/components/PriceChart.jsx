@@ -96,7 +96,7 @@ export default function PriceChart({ history }) {
               textAnchor="end"
               fontFamily="var(--font-family)"
             >
-              ${priceVal.toFixed(0)}
+              ₹{Math.round(priceVal).toLocaleString('en-IN')}
             </text>
           </g>
         ))}
@@ -166,7 +166,7 @@ export default function PriceChart({ history }) {
             zIndex: 10
           }}
         >
-          <div style={{ fontWeight: 700 }}>${points[hoveredIndex].priceNum.toFixed(2)}</div>
+          <div style={{ fontWeight: 700 }}>₹{points[hoveredIndex].priceNum.toLocaleString('en-IN')}</div>
           <div style={{ opacity: 0.8, fontSize: '11px' }}>{formatDate(points[hoveredIndex].recorded_at)}</div>
           {points[hoveredIndex].stock_status && (
             <div style={{ opacity: 0.9, fontSize: '11px' }}>{points[hoveredIndex].stock_status}</div>
