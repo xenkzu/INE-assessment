@@ -26,7 +26,8 @@ export default function TrackedList({ trackedProducts, onRefresh, onViewHistory 
   };
 
   const getStatusBadge = (status) => {
-    switch (status) {
+    const s = String(status || '').toLowerCase();
+    switch (s) {
       case 'success':
         return <span className="badge badge-success">Success</span>;
       case 'retried':
@@ -48,6 +49,15 @@ export default function TrackedList({ trackedProducts, onRefresh, onViewHistory 
       minute: '2-digit',
       second: '2-digit'
     });
+  };
+
+  const formatPrice = (priceVal) => {
+    if (priceVal === null || priceVal === undefined) return '—';
+    const num = Number(priceVal);
+    if (isNaN(num)) return '—';
+    // If integer cents (e.g. 48639), convert to $486.39 if large or display as dollar
+    const displayNum = num > 1000 && Number.isInteger(num) ? num / 100 : num;
+    return `$${displayNum.toFixed(2)}`;
   };
 
   return (
@@ -99,12 +109,20 @@ export default function TrackedList({ trackedProducts, onRefresh, onViewHistory 
             <tbody>
               {trackedProducts.map((p) => {
                 const isDeleting = deletingId === p.id;
+                const name = p.product_name || p.name || 'Product';
+                const url = p.product_url || p.url || `https://demo.inelabteamdev.com/item/${p.store_product_id}`;
+                const option = p.selected_option || p.option || 'Standard';
+                const price = p.latestPrice ?? p.last_scraped_price;
+                const stock = p.latestStock ?? p.last_stock_status;
+                const scrapedAt = p.lastScrapedAt ?? p.last_scraped_at;
+                const status = p.lastOutcome ?? p.last_scrape_status ?? 'pending';
+
                 return (
                   <tr key={p.id}>
                     <td>
                       <div>
                         <a
-                          href={p.product_url}
+                          href={url}
                           target="_blank"
                           rel="noopener noreferrer"
                           style={{
@@ -116,43 +134,41 @@ export default function TrackedList({ trackedProducts, onRefresh, onViewHistory 
                             gap: '4px'
                           }}
                         >
-                          <span>{p.product_name}</span>
+                          <span>{name}</span>
                           <ExternalLink size={13} style={{ opacity: 0.6 }} />
                         </a>
-                        {p.selected_option && (
+                        {option && (
                           <div style={{ fontSize: '13px', color: 'var(--color-text-muted)', marginTop: '2px' }}>
-                            Option: <strong style={{ color: '#444' }}>{p.selected_option}</strong>
+                            Option: <strong style={{ color: '#444' }}>{option}</strong>
                           </div>
                         )}
                       </div>
                     </td>
                     <td>
                       <span style={{ fontWeight: 700, fontSize: '16px' }}>
-                        {p.last_scraped_price !== null && p.last_scraped_price !== undefined
-                          ? `$${Number(p.last_scraped_price).toFixed(2)}`
-                          : '—'}
+                        {formatPrice(price)}
                       </span>
                     </td>
                     <td>
                       <span style={{
                         fontSize: '14px',
-                        color: p.last_stock_status === 'In Stock'
+                        color: stock === 'In Stock'
                           ? 'var(--color-success)'
-                          : p.last_stock_status?.includes('Low')
+                          : String(stock || '').includes('Low')
                           ? 'var(--color-warning)'
                           : 'var(--color-text-muted)'
                       }}>
-                        {p.last_stock_status || 'Unknown'}
+                        {stock || 'Unknown'}
                       </span>
                     </td>
                     <td>
                       <span style={{ fontSize: '14px', color: 'var(--color-text-muted)', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
                         <Clock size={13} />
-                        {formatDateTime(p.last_scraped_at)}
+                        {formatDateTime(scrapedAt)}
                       </span>
                     </td>
                     <td>
-                      {getStatusBadge(p.last_scrape_status)}
+                      {getStatusBadge(status)}
                     </td>
                     <td style={{ textAlign: 'right' }}>
                       <div style={{ display: 'inline-flex', gap: '8px' }}>
@@ -169,7 +185,7 @@ export default function TrackedList({ trackedProducts, onRefresh, onViewHistory 
                           className="btn btn-danger"
                           style={{ padding: '6px 10px' }}
                           disabled={isDeleting}
-                          onClick={() => handleUntrack(p.id, p.product_name)}
+                          onClick={() => handleUntrack(p.id, name)}
                           title="Untrack product"
                         >
                           <Trash2 size={14} />
