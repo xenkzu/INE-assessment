@@ -174,17 +174,29 @@ export async function scrapeProductVariant({
 
       await dismissConsentIfPresent(page);
 
-      // 4. Click "Check today's price" button
-      const checkBtn = page.locator('button:has-text("Check today’s price"), button.ctl-main').first();
+      // 4. Click "Check today's price" button with retry loop to defeat storefront random drop barrier
+      const checkBtn = page.locator('button:has-text("Check today"), button.ctl-main').first();
       if (await checkBtn.count() > 0) {
-        await dismissConsentIfPresent(page);
-        await checkBtn.click({ force: true, timeout: 8000 });
+        for (let clickAttempt = 1; clickAttempt <= 4; clickAttempt++) {
+          const isReady = await page.$('.offer-panel.offer-ready');
+          if (isReady) break;
+          const isLoading = await page.evaluate(() => {
+            const p = document.querySelector('.offer-panel');
+            return p && (p.innerText.includes('Loading') || p.innerText.includes('Retrying'));
+          });
+          if (isLoading) break;
+
+          await dismissConsentIfPresent(page);
+          await checkBtn.click({ force: true, timeout: 4000 }).catch(() => {});
+          await page.waitForTimeout(800);
+        }
       }
 
       // 5. Wait for price quote to reveal (handling loading / retrying states from store)
       await page.waitForFunction(() => {
         const panel = document.querySelector('.offer-panel');
         if (!panel) return false;
+        if (panel.classList.contains('offer-ready')) return true;
         const text = panel.innerText || '';
         return !text.includes('Price locked') &&
                !text.includes('Loading current price') &&

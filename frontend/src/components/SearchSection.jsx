@@ -17,9 +17,10 @@ export default function SearchSection({ onProductTracked, trackedProducts }) {
     const url = p.productUrl || p.url || `https://demo.inelabteamdev.com/item/${id}`;
     const brand = p.brand || '';
     const category = p.category || '';
+    const optionAxis = p.optionAxis || 'Option';
     const options = Array.isArray(p.options) ? p.options : [];
     const image = p.imageUrl || p.image || null;
-    return { id, name, url, brand, category, options, image };
+    return { id, name, url, brand, category, optionAxis, options, image };
   };
 
   // Search catalog on query change (with debouncing)
@@ -184,7 +185,7 @@ export default function SearchSection({ onProductTracked, trackedProducts }) {
                   {product.options && product.options.length > 0 && (
                     <div style={{ marginBottom: '16px' }}>
                       <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: 'var(--color-text-muted)', marginBottom: '6px' }}>
-                        Select Option / Variant:
+                        Select {product.optionAxis || 'Option'}:
                       </label>
                       <select
                         className="select-box"
