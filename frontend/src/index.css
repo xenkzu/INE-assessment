@@ -1,19 +1,6 @@
 @import url('https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400;500;600;700&display=swap');
 @import "tailwindcss";
 
-@theme inline {
-  --color-destructive-foreground: var(--destructive-foreground);
-  --color-border: var(--color-border);
-  --color-input: var(--color-input);
-  --color-background: var(--color-canvas);
-  --color-foreground: var(--color-text);
-  --color-primary: var(--color-primary);
-  --color-primary-foreground: var(--color-primary-foreground);
-  --color-muted: var(--color-muted);
-  --color-muted-foreground: var(--color-text-muted);
-  --color-accent: var(--color-accent);
-  --color-accent-foreground: var(--color-accent-foreground);
-}
 
 :root {
   --font-family: 'Schibsted Grotesk', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
