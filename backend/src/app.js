@@ -10,9 +10,9 @@ export const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Health check endpoint (for Render / uptime monitors)
-app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+// Health check endpoint (for Render / uptime monitors & keep-warm cron)
+app.all('/api/health', (req, res) => {
+  res.status(200).type('text/plain').send('OK');
 });
 
 // Mount Routes

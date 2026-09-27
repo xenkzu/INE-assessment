@@ -9,8 +9,11 @@ export const cronRouter = express.Router();
 /**
  * Scheduled trigger endpoint invoked by cron-job.org every 2 hours.
  * Protected by CRON_SECRET authorization header.
+ * 
+ * Returns 200 OK immediately (<50ms) to satisfy cron-job timeout limits,
+ * while executing Playwright scraping batch asynchronously in the background.
  */
-cronRouter.post('/scrape', async (req, res) => {
+cronRouter.post('/scrape', (req, res) => {
   const authHeader = req.headers['authorization'];
   const expectedSecret = process.env.CRON_SECRET;
 
@@ -22,18 +25,24 @@ cronRouter.post('/scrape', async (req, res) => {
     return res.status(401).json({ error: 'Unauthorized: Invalid or missing cron secret.' });
   }
 
-  try {
-    const result = await cronService.runScheduledScrapes();
-    res.json({
-      status: 'ok',
-      total: result.total,
-      successful: result.successful,
-      retried: result.retried,
-      failed: result.failed,
-      durationMs: result.durationMs
+  // Check if a batch is already currently executing
+  if (cronService.isBusy()) {
+    return res.status(200).json({
+      status: 'busy',
+      message: 'A batch scrape job is already in progress.',
+      timestamp: new Date().toISOString()
     });
-  } catch (err) {
-    console.error('[Cron Execution Error]:', err);
-    res.status(500).json({ error: err.message });
   }
+
+  // Launch background scrape execution asynchronously
+  cronService.runScheduledScrapes().catch((err) => {
+    console.error('[Background Scheduled Scrape Error]:', err);
+  });
+
+  // Immediately return lightweight 200 OK to prevent cron-job.org 30s timeout
+  return res.status(200).json({
+    status: 'ok',
+    message: 'Scheduled scrape job triggered and executing in background.',
+    timestamp: new Date().toISOString()
+  });
 });
