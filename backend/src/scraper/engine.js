@@ -147,14 +147,21 @@ export async function scrapeProductVariant({
       // 1. Navigate to target URL
       await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 25000 });
       await dismissConsentIfPresent(page);
+      // Allow client-side React app to mount and hydrate
+      await page.waitForTimeout(2000);
 
       // 2. Select option if specified
       if (option) {
-        const optionLocator = page.locator(`button.opt-chip:has-text("${option}")`).first();
+        const cleanOption = String(option).trim();
+        const escaped = cleanOption.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        let optionLocator = page.locator('button.opt-chip').filter({ hasText: new RegExp(`^\\s*${escaped}\\s*$`, 'i') }).first();
+        if (await optionLocator.count() === 0) {
+          optionLocator = page.locator(`button.opt-chip:has-text("${cleanOption}")`).first();
+        }
         if (await optionLocator.count() > 0) {
           await dismissConsentIfPresent(page);
           await optionLocator.click({ timeout: 5000 });
-          await page.waitForTimeout(400);
+          await page.waitForTimeout(1500);
         }
       }
 
@@ -204,6 +211,9 @@ export async function scrapeProductVariant({
                !text.includes('Retrying') &&
                /[₹$€£\d]/.test(text);
       }, { timeout: 25000 });
+
+      // 2-second settle wait to ensure asynchronous DOM hydration & price calculation settle completely
+      await page.waitForTimeout(2000);
 
       // 6. Extract price and stock details
       const extraction = await page.evaluate(() => {
