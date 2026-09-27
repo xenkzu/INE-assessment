@@ -10,6 +10,16 @@ export default function SearchSection({ onProductTracked, trackedProducts }) {
   const [selectedOptions, setSelectedOptions] = useState({});
   const [trackingKey, setTrackingKey] = useState(null);
   const [error, setError] = useState(null);
+  const [visibleCount, setVisibleCount] = useState(8); // Initially 2 rows of 4 products
+
+  // Reset pagination when search query or category filter changes
+  useEffect(() => {
+    setVisibleCount(8);
+  }, [query, categoryFilter]);
+
+  const handleLoadMore = () => {
+    setVisibleCount((prev) => prev + 4); // Reveal 1 more row of 4 products
+  };
 
   // Helper to safely extract option string from string or object
   const getOptionLabel = (opt) => {
@@ -231,146 +241,188 @@ export default function SearchSection({ onProductTracked, trackedProducts }) {
           <p style={{ fontSize: '16px', marginTop: '6px' }}>Try searching by another term or clearing the category filter.</p>
         </div>
       ) : (
-        <div className="grid-responsive-4" id="catalog-grid">
-          {filteredResults.map((rawProduct, idx) => {
-            const product = getProductInfo(rawProduct);
-            const currentOption =
-              selectedOptions[product.id] ||
-              (product.options.length > 0
-                ? getOptionLabel(product.options[0])
-                : 'Standard');
+        <div style={{ position: 'relative' }}>
+          <div className="grid-responsive-4" id="catalog-grid">
+            {filteredResults.slice(0, visibleCount).map((rawProduct, idx) => {
+              const product = getProductInfo(rawProduct);
+              const currentOption =
+                selectedOptions[product.id] ||
+                (product.options.length > 0
+                  ? getOptionLabel(product.options[0])
+                  : 'Standard');
 
-            const isTracked = isAlreadyTracked(product.id, currentOption);
-            const isCurrentlyTracking = trackingKey === `${product.id}_${currentOption}`;
-            const delayClass = `delay-${Math.min(8, (idx % 8) + 1)}`;
+              const isTracked = isAlreadyTracked(product.id, currentOption);
+              const isCurrentlyTracking = trackingKey === `${product.id}_${currentOption}`;
+              const delayClass = `delay-${Math.min(8, (idx % 8) + 1)}`;
 
-            return (
-              <article key={product.id} className={`card-rounded animate-fade-in-scale ${delayClass}`} style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-                <div>
-                  {/* Top Badges */}
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '18px' }}>
-                    <span className="dark-pill" title={`${product.category || 'Item'} · ID: ${product.id}`} style={{ fontSize: '12px', padding: '5px 14px' }}>
-                      <span>{product.category || 'Item'} · ID: {product.id}</span>
-                    </span>
-                    {product.brand && (
-                      <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                        {product.brand}
+              return (
+                <article key={product.id} className={`card-rounded animate-fade-in-scale ${delayClass}`} style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                  <div>
+                    {/* Top Badges */}
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '18px' }}>
+                      <span className="dark-pill" title={`${product.category || 'Item'} · ID: ${product.id}`} style={{ fontSize: '12px', padding: '5px 14px' }}>
+                        <span>{product.category || 'Item'} · ID: {product.id}</span>
                       </span>
+                      {product.brand && (
+                        <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                          {product.brand}
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Title & Description (Clickable link without underline) */}
+                    <h3 style={{ marginBottom: '6px', lineHeight: 1.4 }}>
+                      <a
+                        href={product.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{
+                          fontSize: '16px',
+                          fontWeight: 600,
+                          color: 'var(--color-text)',
+                          letterSpacing: '-0.01em',
+                          textDecoration: 'none',
+                          display: 'inline-block',
+                          cursor: 'pointer',
+                          transition: 'color 0.15s ease'
+                        }}
+                        onMouseEnter={(e) => (e.currentTarget.style.color = '#71717A')}
+                        onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--color-text)')}
+                        title="Open product page on storefront"
+                      >
+                        {product.name}
+                      </a>
+                    </h3>
+                    <p style={{ fontSize: '12px', color: 'var(--color-text-muted)', lineHeight: 1.4, marginBottom: '20px' }}>
+                      SKU: {product.specs?.material || 'SKU'}-{product.id} · {product.specs?.warranty || 'Store Warranty'}
+                    </p>
+
+                    {/* Dynamic Variant Selector */}
+                    {product.options && product.options.length > 0 && (
+                      <div style={{ marginBottom: '24px' }}>
+                        <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: 'var(--color-text-muted)', marginBottom: '8px' }}>
+                          Select {product.optionAxis || 'Option'}:
+                        </label>
+                        <div style={{ position: 'relative' }}>
+                          <select
+                            style={{
+                              width: '100%',
+                              backgroundColor: '#F4F4F5',
+                              border: '1px solid var(--color-border)',
+                              fontSize: '12px',
+                              fontWeight: 500,
+                              borderRadius: '12px',
+                              padding: '10px 36px 10px 14px',
+                              color: 'var(--color-text)',
+                              appearance: 'none',
+                              outline: 'none',
+                              cursor: 'pointer',
+                              fontFamily: 'var(--font-family)'
+                            }}
+                            value={currentOption}
+                            onChange={(e) => handleOptionChange(product.id, e.target.value)}
+                          >
+                            {product.options.map((opt) => {
+                              const optName = getOptionLabel(opt);
+                              return (
+                                <option key={optName} value={optName}>
+                                  {optName}
+                                </option>
+                              );
+                            })}
+                          </select>
+                          <ChevronDown
+                            size={14}
+                            style={{
+                              position: 'absolute',
+                              right: '12px',
+                              top: '50%',
+                              transform: 'translateY(-50%)',
+                              color: 'var(--color-text-muted)',
+                              pointerEvents: 'none'
+                            }}
+                          />
+                        </div>
+                      </div>
                     )}
                   </div>
 
-                  {/* Title & Description (Clickable link without underline) */}
-                  <h3 style={{ marginBottom: '6px', lineHeight: 1.4 }}>
-                    <a
-                      href={product.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      style={{
-                        fontSize: '16px',
-                        fontWeight: 600,
-                        color: 'var(--color-text)',
-                        letterSpacing: '-0.01em',
-                        textDecoration: 'none',
-                        display: 'inline-block',
-                        cursor: 'pointer',
-                        transition: 'color 0.15s ease'
-                      }}
-                      onMouseEnter={(e) => (e.currentTarget.style.color = '#71717A')}
-                      onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--color-text)')}
-                      title="Open product page on storefront"
+                  {/* Track Button */}
+                  <div style={{ marginTop: '16px' }}>
+                    <button
+                      className={
+                        isCurrentlyTracking
+                          ? 'btn-pill-disabled'
+                          : isTracked
+                          ? 'btn-pill-disabled'
+                          : 'btn-pill-primary'
+                      }
+                      style={{ width: '100%', padding: '10px 18px', fontSize: '12px' }}
+                      disabled={isTracked || isCurrentlyTracking}
+                      onClick={() => handleTrack(rawProduct)}
                     >
-                      {product.name}
-                    </a>
-                  </h3>
-                  <p style={{ fontSize: '12px', color: 'var(--color-text-muted)', lineHeight: 1.4, marginBottom: '20px' }}>
-                    SKU: {product.specs?.material || 'SKU'}-{product.id} · {product.specs?.warranty || 'Store Warranty'}
-                  </p>
+                      {isCurrentlyTracking ? (
+                        <>
+                          <Loader2 size={14} className="spin-animation" />
+                          <span>Syncing Initial Price...</span>
+                        </>
+                      ) : isTracked ? (
+                        <span style={{ color: 'var(--color-emerald-text)', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                          <Check size={14} />
+                          <span>Tracked ✓</span>
+                        </span>
+                      ) : (
+                        <>
+                          <Plus size={14} />
+                          <span>Track Product</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </article>
+              );
+            })}
+          </div>
 
-                  {/* Dynamic Variant Selector */}
-                  {product.options && product.options.length > 0 && (
-                    <div style={{ marginBottom: '24px' }}>
-                      <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: 'var(--color-text-muted)', marginBottom: '8px' }}>
-                        Select {product.optionAxis || 'Option'}:
-                      </label>
-                      <div style={{ position: 'relative' }}>
-                        <select
-                          style={{
-                            width: '100%',
-                            backgroundColor: '#F4F4F5',
-                            border: '1px solid var(--color-border)',
-                            fontSize: '12px',
-                            fontWeight: 500,
-                            borderRadius: '12px',
-                            padding: '10px 36px 10px 14px',
-                            color: 'var(--color-text)',
-                            appearance: 'none',
-                            outline: 'none',
-                            cursor: 'pointer',
-                            fontFamily: 'var(--font-family)'
-                          }}
-                          value={currentOption}
-                          onChange={(e) => handleOptionChange(product.id, e.target.value)}
-                        >
-                          {product.options.map((opt) => {
-                            const optName = getOptionLabel(opt);
-                            return (
-                              <option key={optName} value={optName}>
-                                {optName}
-                              </option>
-                            );
-                          })}
-                        </select>
-                        <ChevronDown
-                          size={14}
-                          style={{
-                            position: 'absolute',
-                            right: '12px',
-                            top: '50%',
-                            transform: 'translateY(-50%)',
-                            color: 'var(--color-text-muted)',
-                            pointerEvents: 'none'
-                          }}
-                        />
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* Track Button */}
-                <div style={{ marginTop: '16px' }}>
-                  <button
-                    className={
-                      isCurrentlyTracking
-                        ? 'btn-pill-disabled'
-                        : isTracked
-                        ? 'btn-pill-disabled'
-                        : 'btn-pill-primary'
-                    }
-                    style={{ width: '100%', padding: '10px 18px', fontSize: '12px' }}
-                    disabled={isTracked || isCurrentlyTracking}
-                    onClick={() => handleTrack(rawProduct)}
-                  >
-                    {isCurrentlyTracking ? (
-                      <>
-                        <Loader2 size={14} className="spin-animation" />
-                        <span>Syncing Initial Price...</span>
-                      </>
-                    ) : isTracked ? (
-                      <span style={{ color: 'var(--color-emerald-text)', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                        <Check size={14} />
-                        <span>Tracked ✓</span>
-                      </span>
-                    ) : (
-                      <>
-                        <Plus size={14} />
-                        <span>Track Product</span>
-                      </>
-                    )}
-                  </button>
-                </div>
-              </article>
-            );
-          })}
+          {/* Fade Gradient Overlay & Load More Row Button */}
+          {visibleCount < filteredResults.length && (
+            <div
+              style={{
+                position: 'absolute',
+                bottom: 0,
+                left: '-16px',
+                right: '-16px',
+                height: '320px',
+                background: 'linear-gradient(180deg, rgba(246, 246, 248, 0) 0%, rgba(246, 246, 248, 0.45) 30%, rgba(246, 246, 248, 0.88) 65%, var(--color-canvas) 92%, var(--color-canvas) 100%)',
+                display: 'flex',
+                alignItems: 'flex-end',
+                justifyContent: 'center',
+                paddingBottom: '24px',
+                pointerEvents: 'none',
+                zIndex: 10
+              }}
+            >
+              <div style={{ pointerEvents: 'auto', textAlign: 'center' }}>
+                <button
+                  onClick={handleLoadMore}
+                  className="btn-pill-primary"
+                  style={{
+                    padding: '0 28px',
+                    minHeight: '42px',
+                    height: '42px',
+                    fontSize: '12px',
+                    fontWeight: 600,
+                    boxShadow: '0 12px 30px -4px rgba(39, 39, 42, 0.35), 0 4px 12px -2px rgba(39, 39, 42, 0.15)',
+                    cursor: 'pointer'
+                  }}
+                  title="Load one more row of products"
+                >
+                  <ChevronDown size={15} />
+                  <span>Load More Products ({filteredResults.length - visibleCount} remaining)</span>
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </section>
