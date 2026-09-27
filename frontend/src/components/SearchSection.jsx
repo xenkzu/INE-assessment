@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../api/client';
-import { Search, Plus, Check, Loader2 } from 'lucide-react';
+import { Search, Plus, Check, Loader2, ChevronDown } from 'lucide-react';
 
 export default function SearchSection({ onProductTracked, trackedProducts }) {
   const [query, setQuery] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState('all');
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
   const [selectedOptions, setSelectedOptions] = useState({});
@@ -17,17 +18,18 @@ export default function SearchSection({ onProductTracked, trackedProducts }) {
     return opt.label || opt.name || opt.id || String(opt);
   };
 
-  // Helper to extract product properties regardless of naming convention
+  // Helper to extract product properties
   const getProductInfo = (p) => {
     const id = p.storeProductId || p.id;
     const name = p.name || p.title || 'Product';
     const url = p.productUrl || p.url || `https://demo.inelabteamdev.com/item/${id}`;
     const brand = p.brand || '';
-    const category = p.category || '';
+    const category = p.category || 'General';
     const optionAxis = p.optionAxis || 'Option';
     const options = Array.isArray(p.options) ? p.options : [];
     const image = p.imageUrl || p.image || null;
-    return { id, name, url, brand, category, optionAxis, options, image };
+    const specs = p.specs || {};
+    return { id, name, url, brand, category, optionAxis, options, image, specs };
   };
 
   // Search catalog on query change (with debouncing)
@@ -97,66 +99,139 @@ export default function SearchSection({ onProductTracked, trackedProducts }) {
     }
   };
 
-  // Check if a specific product & option is already tracked
   const isAlreadyTracked = (productId, option) => {
     return trackedProducts?.some(
       (tp) => String(tp.store_product_id) === String(productId) && tp.selected_option === option
     );
   };
 
-  return (
-    <section className="card-panel">
-      <h2 className="section-topic">Add Products to Track</h2>
-      <p style={{ color: 'var(--color-text-muted)', marginBottom: '16px' }}>
-        Search the mock store catalog and pick options to track real-time prices every 2 hours.
-      </p>
+  // Filter out products that are already tracked, and apply category filter
+  const filteredResults = results.filter((item) => {
+    const info = getProductInfo(item);
+    
+    // If product is already in tracked products, remove it from discover list
+    const isTracked = trackedProducts?.some(
+      (tp) => String(tp.store_product_id) === String(info.id)
+    );
+    if (isTracked) return false;
 
-      <div style={{ position: 'relative', marginBottom: '20px' }}>
-        <input
-          type="text"
-          className="input-text"
-          style={{ paddingLeft: '42px' }}
-          placeholder="Search catalog products (e.g. Zen, Roller, Synthesizer)..."
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-        />
-        <Search
-          size={18}
-          style={{
-            position: 'absolute',
-            left: '14px',
-            top: '50%',
-            transform: 'translateY(-50%)',
-            color: 'var(--color-text-muted)'
-          }}
-        />
+    if (categoryFilter === 'all') return true;
+    const cat = (item.category || '').toLowerCase();
+    return cat.includes(categoryFilter.toLowerCase());
+  });
+
+  const categories = [
+    { id: 'all', label: 'All Categories' },
+    { id: 'tablets', label: 'Tablets' },
+    { id: 'cameras', label: 'Cameras' },
+    { id: 'audio', label: 'Audio' },
+    { id: 'fitness', label: 'Fitness' },
+    { id: 'lighting', label: 'Lighting' },
+    { id: 'office', label: 'Office' }
+  ];
+
+  return (
+    <section className="section-container">
+      {/* Section Topic */}
+      <div style={{ marginBottom: '36px' }}>
+        <h2 className="title-h1">Discover More Products</h2>
+        <p style={{ fontSize: '16px', color: 'var(--color-text-muted)', marginTop: '12px', lineHeight: 1.5 }}>
+          Browse indexed store inventory and select variants to add to your tracking schedule.
+        </p>
+      </div>
+
+      {/* Search Bar & Category Filter Chips */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', marginBottom: '36px' }}>
+        <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '20px' }}>
+          {/* Search Input */}
+          <div style={{ position: 'relative', width: '100%', maxWidth: '440px' }}>
+            <Search
+              size={16}
+              style={{
+                position: 'absolute',
+                left: '18px',
+                top: '50%',
+                transform: 'translateY(-50%)',
+                color: 'var(--color-text-subtle)',
+                pointerEvents: 'none'
+              }}
+            />
+            <input
+              type="text"
+              id="catalog-search"
+              placeholder="Search by Name, Brand, SKU, Category, or ID..."
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              style={{
+                width: '100%',
+                backgroundColor: '#FFFFFF',
+                border: '1px solid var(--color-border)',
+                fontSize: '16px',
+                borderRadius: 'var(--radius-pill)',
+                padding: '12px 52px 12px 48px',
+                color: 'var(--color-text)',
+                outline: 'none',
+                fontFamily: 'var(--font-family)'
+              }}
+            />
+            <span style={{
+              position: 'absolute',
+              right: '16px',
+              top: '50%',
+              transform: 'translateY(-50%)',
+              fontSize: '12px',
+              fontWeight: 600,
+              color: 'var(--color-text-muted)',
+              backgroundColor: '#F4F4F5',
+              border: '1px solid var(--color-border)',
+              padding: '2px 8px',
+              borderRadius: 'var(--radius-pill)'
+            }}>
+              ⌘K
+            </span>
+          </div>
+
+          {/* Category Filter Chips */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', overflowX: 'auto', paddingBottom: '4px' }}>
+            {categories.map((cat) => (
+              <button
+                key={cat.id}
+                className={`filter-chip ${categoryFilter === cat.id ? 'active' : ''}`}
+                onClick={() => setCategoryFilter(cat.id)}
+              >
+                {cat.label}
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
 
       {error && (
         <div style={{
-          padding: '10px 14px',
-          background: 'var(--color-error-bg)',
-          color: 'var(--color-error)',
-          borderRadius: 'var(--radius)',
-          marginBottom: '16px',
-          fontSize: '14px'
+          padding: '16px 20px',
+          background: 'var(--color-rose-bg)',
+          color: 'var(--color-rose-text)',
+          borderRadius: '20px',
+          marginBottom: '28px',
+          fontSize: '12px'
         }}>
           {error}
         </div>
       )}
 
       {loading ? (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--color-text-muted)', padding: '20px 0' }}>
-          <Loader2 size={18} className="spin-animation" />
-          <span>Searching catalog...</span>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px', color: 'var(--color-text-muted)', padding: '72px 0' }}>
+          <Loader2 size={24} className="spin-animation" />
+          <span style={{ fontSize: '16px', fontWeight: 500 }}>Searching live store catalog...</span>
         </div>
-      ) : results.length === 0 ? (
-        <p style={{ color: 'var(--color-text-muted)', padding: '16px 0' }}>
-          No products matched your search query.
-        </p>
+      ) : filteredResults.length === 0 ? (
+        <div className="card-rounded" style={{ textAlign: 'center', padding: '60px 24px', color: 'var(--color-text-muted)' }}>
+          <p style={{ fontWeight: 600, fontSize: '16px', color: 'var(--color-text)' }}>No products matched your search</p>
+          <p style={{ fontSize: '16px', marginTop: '6px' }}>Try searching by another term or clearing the category filter.</p>
+        </div>
       ) : (
-        <div className="grid-cards">
-          {results.map((rawProduct) => {
+        <div className="grid-responsive-4" id="catalog-grid">
+          {filteredResults.map((rawProduct) => {
             const product = getProductInfo(rawProduct);
             const currentOption =
               selectedOptions[product.id] ||
@@ -168,68 +243,121 @@ export default function SearchSection({ onProductTracked, trackedProducts }) {
             const isCurrentlyTracking = trackingKey === `${product.id}_${currentOption}`;
 
             return (
-              <div key={product.id} className="product-item-card">
+              <article key={product.id} className="card-rounded" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
                 <div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
-                    <h3 style={{ fontSize: '18px', fontWeight: 600, color: 'var(--color-text)' }}>
-                      {product.name}
-                    </h3>
+                  {/* Top Badges */}
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '18px' }}>
+                    <span className="dark-pill" title={`${product.category || 'Item'} · ID: ${product.id}`} style={{ fontSize: '12px', padding: '5px 14px' }}>
+                      <span>{product.category || 'Item'} · ID: {product.id}</span>
+                    </span>
                     {product.brand && (
-                      <span style={{ fontSize: '12px', color: 'var(--color-text-muted)', background: '#f0f0f0', padding: '2px 8px', borderRadius: '4px' }}>
+                      <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                         {product.brand}
                       </span>
                     )}
                   </div>
 
-                  <p style={{ fontSize: '14px', color: 'var(--color-text-muted)', marginBottom: '14px' }}>
-                    {product.category || 'Store Item'} • ID: {product.id}
+                  {/* Title & Description (Clickable link without underline) */}
+                  <h3 style={{ marginBottom: '6px', lineHeight: 1.4 }}>
+                    <a
+                      href={product.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{
+                        fontSize: '16px',
+                        fontWeight: 600,
+                        color: 'var(--color-text)',
+                        letterSpacing: '-0.01em',
+                        textDecoration: 'none',
+                        display: 'inline-block',
+                        cursor: 'pointer',
+                        transition: 'color 0.15s ease'
+                      }}
+                      onMouseEnter={(e) => (e.currentTarget.style.color = '#71717A')}
+                      onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--color-text)')}
+                      title="Open product page on storefront"
+                    >
+                      {product.name}
+                    </a>
+                  </h3>
+                  <p style={{ fontSize: '12px', color: 'var(--color-text-muted)', lineHeight: 1.4, marginBottom: '20px' }}>
+                    SKU: {product.specs?.material || 'SKU'}-{product.id} · {product.specs?.warranty || 'Store Warranty'}
                   </p>
 
+                  {/* Dynamic Variant Selector */}
                   {product.options && product.options.length > 0 && (
-                    <div style={{ marginBottom: '16px' }}>
-                      <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: 'var(--color-text-muted)', marginBottom: '6px' }}>
+                    <div style={{ marginBottom: '24px' }}>
+                      <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: 'var(--color-text-muted)', marginBottom: '8px' }}>
                         Select {product.optionAxis || 'Option'}:
                       </label>
-                      <select
-                        className="select-box"
-                        style={{ width: '100%' }}
-                        value={currentOption}
-                        onChange={(e) => handleOptionChange(product.id, e.target.value)}
-                      >
-                        {product.options.map((opt) => {
-                          const optName = getOptionLabel(opt);
-                          return (
-                            <option key={optName} value={optName}>
-                              {optName}
-                            </option>
-                          );
-                        })}
-                      </select>
+                      <div style={{ position: 'relative' }}>
+                        <select
+                          style={{
+                            width: '100%',
+                            backgroundColor: '#F4F4F5',
+                            border: '1px solid var(--color-border)',
+                            fontSize: '12px',
+                            fontWeight: 500,
+                            borderRadius: '12px',
+                            padding: '10px 36px 10px 14px',
+                            color: 'var(--color-text)',
+                            appearance: 'none',
+                            outline: 'none',
+                            cursor: 'pointer',
+                            fontFamily: 'var(--font-family)'
+                          }}
+                          value={currentOption}
+                          onChange={(e) => handleOptionChange(product.id, e.target.value)}
+                        >
+                          {product.options.map((opt) => {
+                            const optName = getOptionLabel(opt);
+                            return (
+                              <option key={optName} value={optName}>
+                                {optName}
+                              </option>
+                            );
+                          })}
+                        </select>
+                        <ChevronDown
+                          size={14}
+                          style={{
+                            position: 'absolute',
+                            right: '12px',
+                            top: '50%',
+                            transform: 'translateY(-50%)',
+                            color: 'var(--color-text-muted)',
+                            pointerEvents: 'none'
+                          }}
+                        />
+                      </div>
                     </div>
                   )}
                 </div>
 
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '12px', paddingTop: '12px', borderTop: '1px solid var(--color-border-light)' }}>
-                  <span style={{ fontSize: '13px', color: 'var(--color-text-muted)' }}>
-                    Auto-scraped 2h
-                  </span>
-
+                {/* Track Button */}
+                <div style={{ marginTop: '16px' }}>
                   <button
-                    className={`btn ${isTracked ? '' : 'btn-primary'}`}
+                    className={
+                      isCurrentlyTracking
+                        ? 'btn-pill-disabled'
+                        : isTracked
+                        ? 'btn-pill-disabled'
+                        : 'btn-pill-primary'
+                    }
+                    style={{ width: '100%', padding: '10px 18px', fontSize: '12px' }}
                     disabled={isTracked || isCurrentlyTracking}
                     onClick={() => handleTrack(rawProduct)}
-                    style={{ padding: '8px 14px', fontSize: '14px' }}
                   >
                     {isCurrentlyTracking ? (
                       <>
                         <Loader2 size={14} className="spin-animation" />
-                        <span>Tracking & Scraping...</span>
+                        <span>Syncing Initial Price...</span>
                       </>
                     ) : isTracked ? (
-                      <>
-                        <Check size={14} color="var(--color-success)" />
-                        <span>Tracked</span>
-                      </>
+                      <span style={{ color: 'var(--color-emerald-text)', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                        <Check size={14} />
+                        <span>Tracked ✓</span>
+                      </span>
                     ) : (
                       <>
                         <Plus size={14} />
@@ -238,7 +366,7 @@ export default function SearchSection({ onProductTracked, trackedProducts }) {
                     )}
                   </button>
                 </div>
-              </div>
+              </article>
             );
           })}
         </div>

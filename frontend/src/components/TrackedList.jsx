@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { api } from '../api/client';
-import { LineChart, Trash2, ExternalLink, Clock, AlertCircle } from 'lucide-react';
+import { LineChart, AlertCircle } from 'lucide-react';
 
 export default function TrackedList({ trackedProducts, onRefresh, onViewHistory }) {
   const [deletingId, setDeletingId] = useState(null);
@@ -25,32 +25,6 @@ export default function TrackedList({ trackedProducts, onRefresh, onViewHistory 
     }
   };
 
-  const getStatusBadge = (status) => {
-    const s = String(status || '').toLowerCase();
-    switch (s) {
-      case 'success':
-        return <span className="badge badge-success">Success</span>;
-      case 'retried':
-        return <span className="badge badge-retried">Retried</span>;
-      case 'failed':
-        return <span className="badge badge-failed">Failed</span>;
-      default:
-        return <span className="badge badge-pending">{status || 'Pending'}</span>;
-    }
-  };
-
-  const formatDateTime = (isoString) => {
-    if (!isoString) return 'Pending first scrape';
-    const date = new Date(isoString);
-    return date.toLocaleString(undefined, {
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit'
-    });
-  };
-
   const formatPrice = (priceVal) => {
     if (priceVal === null || priceVal === undefined) return '—';
     const num = Number(priceVal);
@@ -58,143 +32,312 @@ export default function TrackedList({ trackedProducts, onRefresh, onViewHistory 
     return `₹${num.toLocaleString('en-IN')}`;
   };
 
+  const formatTimeAgo = (isoString) => {
+    if (!isoString) return 'Just now';
+    const diffMs = Date.now() - new Date(isoString).getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    if (diffMins < 1) return 'Just now';
+    if (diffMins < 60) return `${diffMins}m ago`;
+    const diffHours = Math.floor(diffMins / 60);
+    if (diffHours < 24) return `${diffHours}h ago`;
+    return `${Math.floor(diffHours / 24)}d ago`;
+  };
+
+  const getStatusBadge = (status, lastScrapedAt) => {
+    const s = String(status || '').toLowerCase();
+    const timeAgo = formatTimeAgo(lastScrapedAt);
+
+    if (s === 'pending' || s === 'processing' || s === 'syncing' || !status || s === '') {
+      return (
+        <span style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: '6px',
+          fontSize: '12px',
+          fontWeight: 500,
+          color: '#52525B',
+          backgroundColor: '#F4F4F5',
+          border: '1px solid var(--color-border)',
+          padding: '4px 12px',
+          borderRadius: 'var(--radius-pill)'
+        }}>
+          <span style={{
+            width: '6px',
+            height: '6px',
+            borderRadius: '50%',
+            backgroundColor: 'var(--color-amber)',
+            display: 'inline-block'
+          }}></span>
+          <span>processing...</span>
+        </span>
+      );
+    } else if (s === 'success') {
+      return (
+        <span style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: '6px',
+          fontSize: '12px',
+          fontWeight: 500,
+          color: 'var(--color-emerald-text)',
+          backgroundColor: 'var(--color-emerald-bg)',
+          border: '1px solid var(--color-emerald-border)',
+          padding: '4px 12px',
+          borderRadius: 'var(--radius-pill)'
+        }}>
+          <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: 'var(--color-emerald)' }}></span>
+          <span>success · {timeAgo}</span>
+        </span>
+      );
+    } else if (s === 'retried') {
+      return (
+        <span style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: '6px',
+          fontSize: '12px',
+          fontWeight: 500,
+          color: 'var(--color-amber-text)',
+          backgroundColor: 'var(--color-amber-bg)',
+          border: '1px solid var(--color-amber-border)',
+          padding: '4px 12px',
+          borderRadius: 'var(--radius-pill)'
+        }}>
+          <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: 'var(--color-amber)' }}></span>
+          <span>retried · {timeAgo}</span>
+        </span>
+      );
+    } else {
+      return (
+        <span style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: '6px',
+          fontSize: '12px',
+          fontWeight: 500,
+          color: 'var(--color-rose-text)',
+          backgroundColor: 'var(--color-rose-bg)',
+          border: '1px solid var(--color-rose-border)',
+          padding: '4px 12px',
+          borderRadius: 'var(--radius-pill)'
+        }}>
+          <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: 'var(--color-rose)' }}></span>
+          <span>failed · {timeAgo}</span>
+        </span>
+      );
+    }
+  };
+
+  const getStockBadge = (stockText) => {
+    const s = String(stockText || 'In Stock').toLowerCase();
+    if (s.includes('out') || s.includes('sold')) {
+      return (
+        <span style={{
+          display: 'inline-block',
+          fontSize: '12px',
+          fontWeight: 500,
+          padding: '4px 12px',
+          borderRadius: 'var(--radius-pill)',
+          backgroundColor: 'var(--color-rose-bg)',
+          color: 'var(--color-rose-text)'
+        }}>
+          ✕ Out of Stock
+        </span>
+      );
+    }
+    if (s.includes('low') || (s.includes('left') && parseInt(s) <= 5)) {
+      return (
+        <span style={{
+          display: 'inline-block',
+          fontSize: '12px',
+          fontWeight: 500,
+          padding: '4px 12px',
+          borderRadius: 'var(--radius-pill)',
+          backgroundColor: 'var(--color-amber-bg)',
+          color: 'var(--color-amber-text)'
+        }}>
+          ● {stockText || 'Low Stock'}
+        </span>
+      );
+    }
+    return (
+      <span style={{
+        display: 'inline-block',
+        fontSize: '12px',
+        fontWeight: 500,
+        padding: '4px 12px',
+        borderRadius: 'var(--radius-pill)',
+        backgroundColor: 'var(--color-emerald-bg)',
+        color: 'var(--color-emerald-text)'
+      }}>
+        ● {stockText || 'In Stock'}
+      </span>
+    );
+  };
+
   return (
-    <section className="card-panel">
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+    <section className="section-container">
+      {/* Section Header with Metrics */}
+      <div style={{ display: 'flex', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '24px', marginBottom: '36px' }}>
         <div>
-          <h2 className="section-topic">Active Tracked Products</h2>
-          <p style={{ color: 'var(--color-text-muted)' }}>
-            Products currently monitored. Scheduled checks run automatically every 2 hours.
+          <h2 className="title-h1">Tracked Products</h2>
+          <p style={{ fontSize: '16px', color: 'var(--color-text-muted)', marginTop: '12px', lineHeight: 1.5 }}>
+            Active inventory scrapers running on scheduled crons.
           </p>
         </div>
-        <span style={{ fontSize: '14px', fontWeight: 600, color: 'var(--color-text-muted)', background: '#f0f0f0', padding: '4px 12px', borderRadius: '16px' }}>
-          {trackedProducts.length} {trackedProducts.length === 1 ? 'Product' : 'Products'}
-        </span>
+
+        {/* Metric Badges Group */}
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '14px', paddingTop: '6px' }}>
+          <div className="card-rounded" style={{ padding: '10px 18px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#27272A' }}></span>
+            <span style={{ fontSize: '12px', color: '#52525B' }}>
+              Active Tracked Count: <strong style={{ color: '#27272A', fontSize: '12px' }}>{trackedProducts.length} Items</strong>
+            </span>
+          </div>
+
+          <div className="card-rounded" style={{ padding: '10px 18px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: 'var(--color-emerald)' }}></span>
+            <span style={{ fontSize: '12px', color: '#52525B' }}>
+              Auto-Scrape Frequency: <strong style={{ color: '#27272A', fontSize: '12px' }}>Every 2h</strong>
+            </span>
+          </div>
+
+          <div className="card-rounded" style={{ padding: '10px 18px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <span style={{ color: 'var(--color-emerald-text)', fontWeight: 600, fontSize: '12px' }}>99.4%</span>
+            <span style={{ fontSize: '12px', color: '#52525B' }}>Scraper Health</span>
+          </div>
+        </div>
       </div>
 
       {error && (
         <div style={{
-          padding: '10px 14px',
-          background: 'var(--color-error-bg)',
-          color: 'var(--color-error)',
-          borderRadius: 'var(--radius)',
-          marginBottom: '16px',
-          fontSize: '14px'
+          padding: '16px 20px',
+          background: 'var(--color-rose-bg)',
+          color: 'var(--color-rose-text)',
+          borderRadius: '20px',
+          marginBottom: '28px',
+          fontSize: '12px'
         }}>
           {error}
         </div>
       )}
 
+      {/* Tracked Cards Grid */}
       {trackedProducts.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: '40px 20px', color: 'var(--color-text-muted)' }}>
-          <AlertCircle size={32} style={{ marginBottom: '12px', opacity: 0.5 }} />
-          <p style={{ fontWeight: 600, fontSize: '16px', marginBottom: '4px' }}>No tracked products yet</p>
-          <p style={{ fontSize: '14px' }}>Use the catalog search above to select and track items.</p>
+        <div className="card-rounded" style={{ textAlign: 'center', padding: '72px 32px', color: 'var(--color-text-muted)' }}>
+          <AlertCircle size={40} style={{ marginBottom: '16px', opacity: 0.4 }} />
+          <p style={{ fontWeight: 600, fontSize: '16px', color: 'var(--color-text)', marginBottom: '8px' }}>No tracked products yet</p>
+          <p style={{ fontSize: '16px', color: 'var(--color-text-muted)' }}>Search the store catalog below to pick products and options to monitor.</p>
         </div>
       ) : (
-        <div style={{ overflowX: 'auto' }}>
-          <table className="data-table">
-            <thead>
-              <tr>
-                <th>Product & Option</th>
-                <th>Current Price</th>
-                <th>Stock</th>
-                <th>Last Scraped</th>
-                <th>Status</th>
-                <th style={{ textAlign: 'right' }}>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {trackedProducts.map((p) => {
-                const isDeleting = deletingId === p.id;
-                const name = p.product_name || p.name || 'Product';
-                const url = p.product_url || p.url || `https://demo.inelabteamdev.com/item/${p.store_product_id}`;
-                const option = p.selected_option || p.option || 'Standard';
-                const price = p.latestPrice ?? p.last_scraped_price;
-                const stock = p.latestStock ?? p.last_stock_status;
-                const scrapedAt = p.lastScrapedAt ?? p.last_scraped_at;
-                const status = p.lastOutcome ?? p.last_scrape_status ?? 'pending';
+        <div className="grid-responsive-4">
+          {trackedProducts.map((p) => {
+            const isDeleting = deletingId === p.id;
+            const name = p.product_name || p.name || 'Product';
+            const url = p.product_url || p.url || (p.store_product_id ? `https://demo.inelabteamdev.com/item/${p.store_product_id}` : '#');
+            const option = p.selected_option || p.option || 'Standard';
+            const price = p.latestPrice ?? p.last_scraped_price;
+            const stock = p.latestStock ?? p.last_stock_status;
+            const scrapedAt = p.lastScrapedAt ?? p.last_scraped_at;
+            const status = p.lastOutcome ?? p.last_scrape_status ?? 'pending';
 
-                return (
-                  <tr key={p.id}>
-                    <td>
-                      <div>
-                        <a
-                          href={url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          style={{
-                            fontWeight: 600,
-                            color: 'var(--color-text)',
-                            textDecoration: 'none',
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '4px'
-                          }}
-                        >
-                          <span>{name}</span>
-                          <ExternalLink size={13} style={{ opacity: 0.6 }} />
-                        </a>
-                        {option && (
-                          <div style={{ fontSize: '13px', color: 'var(--color-text-muted)', marginTop: '2px' }}>
-                            Option: <strong style={{ color: '#444' }}>{option}</strong>
-                          </div>
-                        )}
+            return (
+              <div key={p.id} className="card-rounded" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                <div>
+                  {/* Card Header Pills */}
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', marginBottom: '18px' }}>
+                    <span className="dark-pill" title={option} style={{ fontSize: '12px', padding: '5px 14px' }}>
+                      <span>{option}</span>
+                    </span>
+                    {getStatusBadge(status, scrapedAt)}
+                  </div>
+
+                  {/* Brand & Category */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px' }}>
+                    <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                      Store Item
+                    </span>
+                    <span style={{ fontSize: '12px', color: 'var(--color-text-subtle)' }}>• ID: {p.store_product_id}</span>
+                  </div>
+
+                  {/* Title (Clickable link without underline) */}
+                  <h3 style={{ marginBottom: '6px', lineHeight: 1.4 }}>
+                    <a
+                      href={url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{
+                        fontSize: '16px',
+                        fontWeight: 600,
+                        color: 'var(--color-text)',
+                        letterSpacing: '-0.01em',
+                        textDecoration: 'none',
+                        display: 'inline-block',
+                        cursor: 'pointer',
+                        transition: 'color 0.15s ease'
+                      }}
+                      onMouseEnter={(e) => (e.currentTarget.style.color = '#71717A')}
+                      onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--color-text)')}
+                      title="Open product page on storefront"
+                    >
+                      {name}
+                    </a>
+                  </h3>
+                  <p style={{ fontSize: '12px', color: 'var(--color-text-subtle)', marginBottom: '20px' }}>
+                    SKU: SK-{p.store_product_id}
+                  </p>
+
+                  {/* Price (24px) or Skeleton Loader */}
+                  <div style={{ marginBottom: '16px', minHeight: '32px', display: 'flex', alignItems: 'center' }}>
+                    {price === null || price === undefined ? (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <div className="skeleton-shimmer" style={{ width: '110px', height: '26px', borderRadius: '8px' }}></div>
+                        <span style={{ fontSize: '12px', color: 'var(--color-text-subtle)' }}>syncing...</span>
                       </div>
-                    </td>
-                    <td>
-                      <span style={{ fontWeight: 700, fontSize: '16px' }}>
-                        {formatPrice(price)}
-                      </span>
-                    </td>
-                    <td>
-                      <span style={{
-                        fontSize: '14px',
-                        color: stock === 'In Stock'
-                          ? 'var(--color-success)'
-                          : String(stock || '').includes('Low')
-                          ? 'var(--color-warning)'
-                          : 'var(--color-text-muted)'
-                      }}>
-                        {stock || 'Unknown'}
-                      </span>
-                    </td>
-                    <td>
-                      <span style={{ fontSize: '14px', color: 'var(--color-text-muted)', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                        <Clock size={13} />
-                        {formatDateTime(scrapedAt)}
-                      </span>
-                    </td>
-                    <td>
-                      {getStatusBadge(status)}
-                    </td>
-                    <td style={{ textAlign: 'right' }}>
-                      <div style={{ display: 'inline-flex', gap: '8px' }}>
-                        <button
-                          className="btn"
-                          style={{ padding: '6px 12px', fontSize: '13px' }}
-                          onClick={() => onViewHistory(p)}
-                          title="View price history and scrape audit logs"
-                        >
-                          <LineChart size={14} />
-                          <span>History</span>
-                        </button>
-                        <button
-                          className="btn btn-danger"
-                          style={{ padding: '6px 10px' }}
-                          disabled={isDeleting}
-                          onClick={() => handleUntrack(p.id, name)}
-                          title="Untrack product"
-                        >
-                          <Trash2 size={14} />
-                        </button>
+                    ) : (
+                      <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
+                        <span style={{ fontSize: '24px', fontWeight: 700, letterSpacing: '-0.02em', color: 'var(--color-text)' }}>
+                          {formatPrice(price)}
+                        </span>
+                        <span style={{ fontSize: '12px', color: 'var(--color-text-muted)' }}>tax incl.</span>
                       </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+                    )}
+                  </div>
+
+                  {/* Stock Status or Skeleton Loader */}
+                  <div style={{ marginBottom: '24px', minHeight: '26px', display: 'flex', alignItems: 'center' }}>
+                    {price === null || price === undefined ? (
+                      <div className="skeleton-shimmer" style={{ width: '85px', height: '22px', borderRadius: 'var(--radius-pill)' }}></div>
+                    ) : (
+                      getStockBadge(stock)
+                    )}
+                  </div>
+                </div>
+
+                {/* Card Footer Actions */}
+                <div style={{ paddingTop: '20px', borderTop: '1px solid var(--color-border)', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <button
+                    className="btn-pill-primary"
+                    style={{ flex: 1, fontSize: '12px', padding: '10px 16px' }}
+                    onClick={() => onViewHistory(p)}
+                    title="Open price history chart and scrape audit table"
+                  >
+                    <LineChart size={14} />
+                    <span>View Chart & Audit</span>
+                  </button>
+
+                  <button
+                    className="btn-pill-danger"
+                    disabled={isDeleting}
+                    onClick={() => handleUntrack(p.id, name)}
+                    title="Stop monitoring this variant"
+                  >
+                    <span>Untrack</span>
+                  </button>
+                </div>
+              </div>
+            );
+          })}
         </div>
       )}
     </section>

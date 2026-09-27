@@ -11,8 +11,8 @@ export default function App() {
   const [error, setError] = useState(null);
   const [selectedProductForHistory, setSelectedProductForHistory] = useState(null);
 
-  const fetchTrackedProducts = async () => {
-    setLoading(true);
+  const fetchTrackedProducts = async (showLoading = false) => {
+    if (showLoading) setLoading(true);
     setError(null);
     try {
       const data = await api.getTrackedProducts();
@@ -20,13 +20,28 @@ export default function App() {
     } catch (err) {
       setError(err.message || 'Failed to fetch tracked products');
     } finally {
-      setLoading(false);
+      if (showLoading) setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchTrackedProducts();
+    fetchTrackedProducts(true);
   }, []);
+
+  // Real-time auto-polling: refresh in background if any product is currently syncing/pending
+  useEffect(() => {
+    const hasPending = trackedProducts.some(
+      (p) => p.latestPrice === null || p.latestPrice === undefined || p.lastOutcome === 'pending' || p.lastOutcome === 'processing'
+    );
+
+    if (!hasPending) return;
+
+    const interval = setInterval(() => {
+      fetchTrackedProducts(false);
+    }, 1500);
+
+    return () => clearInterval(interval);
+  }, [trackedProducts]);
 
   return (
     <main className="app-container">
@@ -45,17 +60,17 @@ export default function App() {
         </div>
       )}
 
-      {/* Catalog Search & Track Section */}
-      <SearchSection
-        onProductTracked={fetchTrackedProducts}
-        trackedProducts={trackedProducts}
-      />
-
-      {/* Active Tracked Products List */}
+      {/* Active Tracked Products List (First Section) */}
       <TrackedList
         trackedProducts={trackedProducts}
         onRefresh={fetchTrackedProducts}
         onViewHistory={(product) => setSelectedProductForHistory(product)}
+      />
+
+      {/* Discover More Products Section (Second Section) */}
+      <SearchSection
+        onProductTracked={fetchTrackedProducts}
+        trackedProducts={trackedProducts}
       />
 
       {/* Price History & Audit Log Modal */}

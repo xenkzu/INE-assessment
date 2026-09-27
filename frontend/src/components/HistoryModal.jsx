@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../api/client';
 import PriceChart from './PriceChart';
-import { X, Loader2, Calendar, Activity, CheckCircle, AlertTriangle, XCircle } from 'lucide-react';
+import { X, Loader2, CheckCircle2, AlertTriangle, XCircle, TrendingDown, TrendingUp, ShieldCheck } from 'lucide-react';
 
 export default function HistoryModal({ product, onClose }) {
   const [data, setData] = useState({ history: [], logs: [] });
@@ -33,6 +33,22 @@ export default function HistoryModal({ product, onClose }) {
 
   if (!product) return null;
 
+  // Calculate high-level summary metrics
+  const validPrices = (data.history || [])
+    .map((h) => (h.price !== null && h.price !== undefined ? Number(h.price) : null))
+    .filter((p) => p !== null);
+
+  const currentPrice = validPrices.length > 0 ? validPrices[validPrices.length - 1] : product.last_scraped_price;
+  const lowestPrice = validPrices.length > 0 ? Math.min(...validPrices) : currentPrice;
+  const highestPrice = validPrices.length > 0 ? Math.max(...validPrices) : currentPrice;
+  
+  const latestStock = data.history.length > 0
+    ? data.history[data.history.length - 1].stock_status
+    : product.last_stock_status || 'In Stock';
+
+  const successfulLogs = (data.logs || []).filter((l) => l.status === 'success' || l.status === 'retried').length;
+  const reliabilityScore = data.logs.length > 0 ? Math.round((successfulLogs / data.logs.length) * 100) : 100;
+
   const formatDate = (isoString) => {
     if (!isoString) return '—';
     const date = new Date(isoString);
@@ -46,24 +62,32 @@ export default function HistoryModal({ product, onClose }) {
     });
   };
 
+  const formatPrice = (val) => {
+    if (val === null || val === undefined) return '—';
+    const num = Number(val);
+    if (isNaN(num)) return '—';
+    return `₹${num.toLocaleString('en-IN')}`;
+  };
+
   const getLogStatusBadge = (status) => {
-    if (status === 'success') {
+    const s = String(status || '').toLowerCase();
+    if (s === 'success') {
       return (
-        <span className="badge badge-success" style={{ gap: '4px' }}>
-          <CheckCircle size={12} /> Success
+        <span className="badge badge-success">
+          <CheckCircle2 size={14} /> Success
         </span>
       );
     }
-    if (status === 'retried') {
+    if (s === 'retried') {
       return (
-        <span className="badge badge-retried" style={{ gap: '4px' }}>
-          <AlertTriangle size={12} /> Retried
+        <span className="badge badge-retried">
+          <AlertTriangle size={14} /> Retried
         </span>
       );
     }
     return (
-      <span className="badge badge-failed" style={{ gap: '4px' }}>
-        <XCircle size={12} /> Failed
+      <span className="badge badge-failed">
+        <XCircle size={14} /> Failed
       </span>
     );
   };
@@ -71,105 +95,191 @@ export default function HistoryModal({ product, onClose }) {
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+        {/* Modal Header */}
         <div className="modal-header">
           <div>
-            <h2 style={{ fontSize: '24px', fontWeight: 700, marginBottom: '4px' }}>
-              {product.product_name}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '10px' }}>
+              <div className="dual-badge">
+                <span className="dual-badge-left">STORE ID</span>
+                <span className="dual-badge-right">{product.store_product_id}</span>
+              </div>
+              <span className="dark-pill" title={product.selected_option || 'Standard'} style={{ fontSize: '12px', padding: '5px 14px' }}>
+                <span>{product.selected_option || 'Standard'}</span>
+              </span>
+            </div>
+
+            {/* Clickable Product Title without Underline */}
+            <h2 style={{ marginBottom: '6px', lineHeight: 1.4 }}>
+              <a
+                href={product.product_url || product.url || `https://demo.inelabteamdev.com/item/${product.store_product_id}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  fontSize: '16px',
+                  fontWeight: 600,
+                  letterSpacing: '-0.01em',
+                  color: 'var(--color-text)',
+                  textDecoration: 'none',
+                  display: 'inline-block',
+                  cursor: 'pointer',
+                  transition: 'color 0.15s ease'
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.color = '#71717A')}
+                onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--color-text)')}
+                title="Open product page on storefront"
+              >
+                {product.product_name}
+              </a>
             </h2>
-            <p style={{ color: 'var(--color-text-muted)', fontSize: '14px' }}>
-              Selected Option: <strong style={{ color: '#222' }}>{product.selected_option || 'Default'}</strong>
-              <span style={{ margin: '0 8px' }}>•</span>
-              Store ID: {product.store_product_id}
+            <p style={{ color: 'var(--color-text-muted)', fontSize: '12px' }}>
+              SKU: SK-{product.store_product_id} · Variant: <strong style={{ color: '#27272A' }}>{product.selected_option || 'Standard'}</strong>
             </p>
           </div>
 
           <button className="close-btn" onClick={onClose} title="Close Modal">
-            <X size={22} />
+            <X size={20} />
           </button>
         </div>
 
-        {/* Tab switcher */}
-        <div style={{ display: 'flex', gap: '8px', borderBottom: '1px solid var(--color-border)', marginBottom: '20px' }}>
+        {/* 4 Summary Stat Cards */}
+        <div className="modal-stat-grid">
+          {/* 1. Current Price */}
+          <div className="modal-stat-card">
+            <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+              Current Price
+            </span>
+            <div style={{ margin: '10px 0 6px 0', fontSize: '24px', fontWeight: 700, color: 'var(--color-text)', letterSpacing: '-0.02em' }}>
+              {formatPrice(currentPrice)}
+            </div>
+            <span style={{ fontSize: '12px', color: 'var(--color-emerald-text)', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: 'var(--color-emerald)' }}></span>
+              {latestStock || 'In Stock'}
+            </span>
+          </div>
+
+          {/* 2. Lowest Recorded */}
+          <div className="modal-stat-card">
+            <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+              Historical Lowest
+            </span>
+            <div style={{ margin: '10px 0 6px 0', fontSize: '24px', fontWeight: 700, color: 'var(--color-emerald-text)', letterSpacing: '-0.02em' }}>
+              {formatPrice(lowestPrice)}
+            </div>
+            <span style={{ fontSize: '12px', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <TrendingDown size={14} color="var(--color-emerald)" />
+              Lowest recorded price
+            </span>
+          </div>
+
+          {/* 3. Highest Recorded */}
+          <div className="modal-stat-card">
+            <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+              Historical Highest
+            </span>
+            <div style={{ margin: '10px 0 6px 0', fontSize: '24px', fontWeight: 700, color: 'var(--color-text)', letterSpacing: '-0.02em' }}>
+              {formatPrice(highestPrice)}
+            </div>
+            <span style={{ fontSize: '12px', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <TrendingUp size={14} color="#71717A" />
+              Peak selling price
+            </span>
+          </div>
+
+          {/* 4. Scraper Reliability */}
+          <div className="modal-stat-card">
+            <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+              Scrape Reliability
+            </span>
+            <div style={{ margin: '10px 0 6px 0', fontSize: '24px', fontWeight: 700, color: 'var(--color-text)', letterSpacing: '-0.02em' }}>
+              {reliabilityScore}%
+            </div>
+            <span style={{ fontSize: '12px', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <ShieldCheck size={14} color="var(--color-emerald)" />
+              {data.logs.length} runs executed
+            </span>
+          </div>
+        </div>
+
+        {/* Tab Switcher */}
+        <div style={{ display: 'flex', gap: '10px', marginBottom: '24px' }}>
           <button
             onClick={() => setActiveTab('chart')}
-            style={{
-              padding: '10px 16px',
-              fontWeight: 600,
-              fontSize: '15px',
-              border: 'none',
-              background: 'transparent',
-              borderBottom: activeTab === 'chart' ? '2px solid var(--color-primary)' : '2px solid transparent',
-              color: activeTab === 'chart' ? 'var(--color-primary)' : 'var(--color-text-muted)',
-              cursor: 'pointer'
-            }}
+            className={`filter-chip ${activeTab === 'chart' ? 'active' : ''}`}
+            style={{ fontSize: '16px', padding: '10px 20px' }}
           >
-            Price History ({data.history.length})
+            Price Timeline ({data.history.length})
           </button>
           <button
             onClick={() => setActiveTab('logs')}
-            style={{
-              padding: '10px 16px',
-              fontWeight: 600,
-              fontSize: '15px',
-              border: 'none',
-              background: 'transparent',
-              borderBottom: activeTab === 'logs' ? '2px solid var(--color-primary)' : '2px solid transparent',
-              color: activeTab === 'logs' ? 'var(--color-primary)' : 'var(--color-text-muted)',
-              cursor: 'pointer'
-            }}
+            className={`filter-chip ${activeTab === 'logs' ? 'active' : ''}`}
+            style={{ fontSize: '16px', padding: '10px 20px' }}
           >
             Scrape Audit Logs ({data.logs.length})
           </button>
         </div>
 
         {loading ? (
-          <div style={{ textAlign: 'center', padding: '50px 0', color: 'var(--color-text-muted)' }}>
-            <Loader2 size={24} className="spin-animation" style={{ marginBottom: '8px' }} />
-            <p>Loading history records...</p>
+          <div style={{ textAlign: 'center', padding: '60px 0', color: 'var(--color-text-muted)' }}>
+            <Loader2 size={24} className="spin-animation" style={{ marginBottom: '12px' }} />
+            <p style={{ fontSize: '16px' }}>Fetching telemetry and audit data...</p>
           </div>
         ) : error ? (
           <div style={{
-            padding: '14px',
-            background: 'var(--color-error-bg)',
-            color: 'var(--color-error)',
-            borderRadius: 'var(--radius)'
+            padding: '16px 20px',
+            background: 'var(--color-rose-bg)',
+            color: 'var(--color-rose-text)',
+            borderRadius: '20px',
+            fontSize: '12px'
           }}>
             {error}
           </div>
         ) : activeTab === 'chart' ? (
           <div>
-            {/* SVG Visual Graph */}
+            {/* Recharts Price Timeline Chart */}
             <PriceChart history={data.history} />
 
-            {/* Price Table */}
-            <h3 style={{ marginBottom: '12px', fontSize: '16px', fontWeight: 600 }}>Historical Records</h3>
+            {/* Historical Records Table */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
+              <h3 style={{ fontSize: '16px', fontWeight: 600, color: 'var(--color-text)' }}>Historical Price Snapshots</h3>
+              <span style={{ fontSize: '12px', color: 'var(--color-text-muted)' }}>{data.history.length} records</span>
+            </div>
+
             {data.history.length === 0 ? (
-              <p style={{ color: 'var(--color-text-muted)', padding: '16px 0' }}>No price records recorded yet.</p>
+              <div style={{ padding: '32px', textAlign: 'center', color: 'var(--color-text-muted)', background: 'var(--color-canvas)', borderRadius: '20px', fontSize: '12px' }}>
+                No price snapshots recorded yet.
+              </div>
             ) : (
-              <div style={{ maxHeight: '260px', overflowY: 'auto' }}>
+              <div className="data-table-container" style={{ maxHeight: '280px', overflowY: 'auto' }}>
                 <table className="data-table">
                   <thead>
                     <tr>
-                      <th>Recorded At</th>
-                      <th>Price</th>
-                      <th>Stock Status</th>
+                      <th>RECORDED TIMESTAMP</th>
+                      <th>PRICE (INR)</th>
+                      <th>STOCK STATUS</th>
                     </tr>
                   </thead>
                   <tbody>
                     {data.history.map((record) => (
                       <tr key={record.id}>
-                        <td style={{ fontSize: '14px', color: 'var(--color-text-muted)' }}>
+                        <td style={{ fontSize: '12px', color: 'var(--color-text-muted)' }}>
                           {formatDate(record.recorded_at)}
                         </td>
-                        <td style={{ fontWeight: 700, fontSize: '15px' }}>
-                          {record.price !== null ? `₹${Number(record.price).toLocaleString('en-IN')}` : '—'}
+                        <td style={{ fontWeight: 600, fontSize: '12px', color: 'var(--color-text)' }}>
+                          {formatPrice(record.price)}
                         </td>
                         <td>
                           <span style={{
-                            fontSize: '13px',
-                            color: record.stock_status === 'In Stock' ? 'var(--color-success)' : 'var(--color-text-muted)'
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            fontSize: '12px',
+                            fontWeight: 500,
+                            color: record.stock_status === 'In Stock' ? 'var(--color-emerald-text)' : 'var(--color-rose-text)',
+                            backgroundColor: record.stock_status === 'In Stock' ? 'var(--color-emerald-bg)' : 'var(--color-rose-bg)',
+                            padding: '4px 10px',
+                            borderRadius: 'var(--radius-pill)'
                           }}>
-                            {record.stock_status || 'Unknown'}
+                            ● {record.stock_status || 'In Stock'}
                           </span>
                         </td>
                       </tr>
@@ -181,40 +291,46 @@ export default function HistoryModal({ product, onClose }) {
           </div>
         ) : (
           <div>
-            <h3 style={{ marginBottom: '12px', fontSize: '16px', fontWeight: 600 }}>Scrape Execution Logs</h3>
-            <p style={{ fontSize: '13px', color: 'var(--color-text-muted)', marginBottom: '16px' }}>
-              Full audit trail of all scheduled & on-demand Playwright scraping attempts, durations, and retry statuses.
-            </p>
+            <div style={{ marginBottom: '20px' }}>
+              <h3 style={{ fontSize: '16px', fontWeight: 600, color: 'var(--color-text)', marginBottom: '6px' }}>
+                Scrape Execution Audit Trail
+              </h3>
+              <p style={{ fontSize: '12px', color: 'var(--color-text-muted)' }}>
+                Full telemetry of all Playwright browser sessions, extraction timings, and retry attempts.
+              </p>
+            </div>
 
             {data.logs.length === 0 ? (
-              <p style={{ color: 'var(--color-text-muted)', padding: '16px 0' }}>No scrape logs recorded yet.</p>
+              <div style={{ padding: '32px', textAlign: 'center', color: 'var(--color-text-muted)', background: 'var(--color-canvas)', borderRadius: '20px', fontSize: '12px' }}>
+                No scrape logs recorded yet.
+              </div>
             ) : (
-              <div style={{ maxHeight: '340px', overflowY: 'auto' }}>
+              <div className="data-table-container" style={{ maxHeight: '340px', overflowY: 'auto' }}>
                 <table className="data-table">
                   <thead>
                     <tr>
-                      <th>Timestamp</th>
-                      <th>Status</th>
-                      <th>Duration</th>
-                      <th>Attempts</th>
-                      <th>Details / Error</th>
+                      <th>TIMESTAMP</th>
+                      <th>OUTCOME</th>
+                      <th>DURATION</th>
+                      <th>ATTEMPTS</th>
+                      <th>DETAILS / STATUS</th>
                     </tr>
                   </thead>
                   <tbody>
                     {data.logs.map((log) => (
                       <tr key={log.id}>
-                        <td style={{ fontSize: '13px', color: 'var(--color-text-muted)' }}>
+                        <td style={{ fontSize: '12px', color: 'var(--color-text-muted)' }}>
                           {formatDate(log.scraped_at)}
                         </td>
                         <td>{getLogStatusBadge(log.status)}</td>
-                        <td style={{ fontSize: '13px' }}>
-                          {log.duration_ms ? `${log.duration_ms} ms` : '—'}
+                        <td style={{ fontSize: '12px', fontWeight: 600, color: 'var(--color-text)' }}>
+                          {log.duration_ms ? `${Number(log.duration_ms).toLocaleString()} ms` : '—'}
                         </td>
-                        <td style={{ fontSize: '13px', fontWeight: 600 }}>
+                        <td style={{ fontSize: '12px', fontWeight: 600 }}>
                           {log.attempts || 1}
                         </td>
-                        <td style={{ fontSize: '13px', color: log.error_message ? 'var(--color-error)' : 'var(--color-text-muted)', maxWidth: '240px', wordBreak: 'break-word' }}>
-                          {log.error_message || 'Completed without errors'}
+                        <td style={{ fontSize: '12px', color: log.error_message ? 'var(--color-rose-text)' : 'var(--color-text-muted)', maxWidth: '280px', wordBreak: 'break-word' }}>
+                          {log.error_message || 'Session completed successfully'}
                         </td>
                       </tr>
                     ))}
